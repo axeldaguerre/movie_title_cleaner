@@ -19,9 +19,11 @@ Movie year is important because it's the only way to diffence two movies with th
 8. Handle Folder / Files mixing
 8. Add realisator on the `MessageBox` (in order to difference two movies with same name same year)
 9. Add language support, User should be able to have specific language for all movies scrapped.
+10. Movie Poster displayed on suggestion in order to quicker make the decision
+11. Integrate test, for example string_op.h changes should not break. As I've not made strong decision about its design.
 
 This is a personal tool that permit me to automatically manage my media library for Kodi.
-The future of this tool will be to have a friendly way to do simple operation that will use imdb **without api key** to get a proper movie name, use for the folder that will contain the movie data to properly have a name scrapable by imdb python api. 
+The future of this tool will be to have a friendly way to do simple operation that will use imdb **without api key needed** to get a proper movie name, use for the folder that will contain the movie data to properly have a name scrapable by imdb python api. 
 It uses httprequest, scrap the html content to get all possible movies from the file name, then asks the user to propose a movie title. It will prompt the user with `MessageBox` and  `YES` / `NO` button.
 
 # build the exe

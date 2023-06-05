@@ -19,7 +19,7 @@ PLATFORM_WRITE_ENTIRE_FILE(PlatformWriteEntireFile)
         DWORD BytesWritten;
         if(WriteFile(FileHandle, Memory, MemorySize, &BytesWritten, 0))
         {
-            // NOTE(casey): File read successfully
+            // NOTE(Axel): File read successfully
             Result = (BytesWritten == MemorySize);
         }
         else
@@ -56,14 +56,13 @@ inline win32_app_code Win32LoadAppCode(char *SourceDLLName)
 
 PLATFORM_MAKE_HTTP_REQUEST(PlatformMakeHTTPRequest)
 {
-    http_info Result = {};
 
     HINTERNET InternetHandle = InternetOpen("IMDB's Connexion", INTERNET_OPEN_TYPE_DIRECT, NULL, NULL, 0);
 
     if (InternetHandle == NULL)
     {
         OutputDebugStringA("InternetOpen failed \n");
-        Result.HasFailed = true;
+        HTTPInfo->HasFailed = true;
     }
     else
     {
@@ -76,7 +75,7 @@ PLATFORM_MAKE_HTTP_REQUEST(PlatformMakeHTTPRequest)
                                       "Internet Error", MB_OK);
             if(Answer == IDOK)
             {
-                return Result;
+                OutputDebugStringA("User Accepted\n");
             }
         }
         else
@@ -94,25 +93,25 @@ PLATFORM_MAKE_HTTP_REQUEST(PlatformMakeHTTPRequest)
             while(InternetReadFile(ConnectHandle, Buffer, BufferSize, &BytesRead)
                   && BytesRead > 0)
             {
-                char* Temp = (char*)realloc(Result.ResponseData, Result.ResponseDataSize + BytesRead + 1);
+                char* Temp = (char*)realloc(HTTPInfo->ResponseData, HTTPInfo->ResponseDataSize + BytesRead + 1);
                     
                 if(Temp == 0)
                 {
-                    free(Result.ResponseData);
-                    Result.ResponseData = 0;
+                    free(HTTPInfo->ResponseData);
+                    HTTPInfo->ResponseData = 0;
                     break;
                 }
                     
-                Result.ResponseData = Temp;
-                memcpy(Result.ResponseData + Result.ResponseDataSize, Buffer, BytesRead);
-                Result.ResponseDataSize += BytesRead;
+                HTTPInfo->ResponseData = Temp;
+                memcpy(HTTPInfo->ResponseData + HTTPInfo->ResponseDataSize, Buffer, BytesRead);
+                HTTPInfo->ResponseDataSize += BytesRead;
             }
             
-            if (Result.ResponseData != NULL) Result.ResponseData[Result.ResponseDataSize] = '\0';
+            if (HTTPInfo->ResponseData != NULL) HTTPInfo->ResponseData[HTTPInfo->ResponseDataSize] = '\0';
         }
     }
     InternetCloseHandle(InternetHandle);
-    return Result;
+
 }
 
 inline void UserConfirmation(movie *Movie)
@@ -278,7 +277,7 @@ WinMain(HINSTANCE Instance,
         int ShowCode)
 {
 
-#if INTERNAL
+#if  INTERNAL
     LPVOID BaseAddress = (LPVOID)TeraBytes(2);
 #else
     LPVOID BaseAddress = 0;
@@ -335,20 +334,11 @@ WinMain(HINSTANCE Instance,
 
             movie Movie = {};
             if(AppMemory.PermanentMemory)
-            {  
-                if(App.GetMovieData(&Thread, &File, &Movie, &HTTPInfo, &AppMemory))
+            {
+                if(App.GetMovieData)
                 {
-                    free(HTTPInfo.ResponseData);
-
-                
-                    // InternetCloseHandle(ConnectHandle);
-                    // win32_begin_file_record(&Win32State, &File);
-                    // char DirPathTemp[MAX_PATH];
-                    // str_cut_after_from_start(File.FileName, "\\", str_len("\\"), DirPathTemp);
-                }
-                else
-                {
-                    break;
+                    App.GetMovieData(&Thread, &File, &Movie, &HTTPInfo, &AppMemory);
+                    //free(HTTPInfo.ResponseData);
                 }
             }
         }

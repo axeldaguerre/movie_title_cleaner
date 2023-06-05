@@ -120,6 +120,7 @@ inline b32 str_search_from_start(char *Pattern, int PatLen, char *Text, int *Cha
 
     for(;IndexText < TextLen && IndexPat < PatLen; ++IndexText)
     {
+
         if(char_at(Pattern, IndexPat) == char_at(Text, IndexText))
         {
             ++IndexPat;
@@ -129,19 +130,108 @@ inline b32 str_search_from_start(char *Pattern, int PatLen, char *Text, int *Cha
             IndexText -= IndexPat;
             IndexPat = 0;
         }
+        
+        if(IndexPat == PatLen)
+        {
+            if(IndexPat != 0 && IndexText >= PatLen)
+            {
+                *Char = IndexText - PatLen;
+            }
+            else
+            {
+                *Char = 0;
+            }
+            Result = true;
+            break;
+        }
     }
     
-    if(IndexPat == PatLen)
+    return Result;
+}
+
+inline b32 str_search_from_start(char *Pattern, int PatLen, char *Text,
+                                 int Start, int End, int *Char)
+{
+    Assert(Start < End);
+    
+    b32 Result    = false;
+    *Char         = 0;
+    int TextLen   = str_len(Text) - Start;
+    Text += Start;
+    int IndexText = Start;
+    int IndexPat  = 0;
+
+    for(;IndexText < TextLen && IndexPat < PatLen; ++IndexText)
     {
-        if(IndexPat !=0)
+        if(IndexText == End)
         {
-            *Char = IndexText - PatLen;
+            break;
+        }
+        
+        if(char_at(Pattern, IndexPat) == char_at(Text, IndexText))
+        {
+            ++IndexPat;
         }
         else
         {
-            *Char = 0;
+            IndexText -= IndexPat;
+            IndexPat = 0;
         }
-        Result = true;
+        
+        if(IndexPat == PatLen)
+        {
+            if(IndexPat !=0)
+            {
+                *Char = IndexText - PatLen;
+            }
+            else
+            {
+                *Char = 0;
+            }
+            Result = true;
+            break;
+        }
+    }
+    
+    return Result;
+}
+
+inline b32 str_search_from_start(char *Pattern, int PatLen, char *Text,
+                                 int Start, int *Char)
+{
+    b32 Result    = false;
+    *Char         = 0;
+    int TextLen   = str_len(Text) - Start;
+    Text += Start;
+    int IndexText = 0;
+    int IndexPat  = 0;
+
+    for(;IndexText < TextLen && IndexPat < PatLen; ++IndexText)
+    {
+        
+        if(char_at(Pattern, IndexPat) == char_at(Text, IndexText))
+        {
+            ++IndexPat;
+        }
+        else
+        {
+            IndexText -= IndexPat;
+            IndexPat = 0;
+        }
+        
+        if(IndexPat == PatLen)
+        {
+            if(IndexPat !=0)
+            {
+                *Char = IndexText - PatLen;
+            }
+            else
+            {
+                *Char = 0;
+            }
+            Result = true;
+            break;
+        }
     }
     
     return Result;
@@ -175,7 +265,7 @@ inline int str_search_from_start_count(char *Pattern, char *Text)
     return Result;
 }
 
-inline int  str_copy(char *String, char *Dest)
+inline int str_copy(char *String, char *Dest)
 {
     int Result = 0;
     for(char *Scan = String; *Scan; ++Scan)
@@ -187,6 +277,22 @@ inline int  str_copy(char *String, char *Dest)
     return Result;
 }
 
+
+inline int str_copy(char *String, char *Dest, int Start, int End)
+{
+    Assert(Start < End);
+    int Result = 0;
+    String += Start;
+    
+    for(int Index = Start; Index < End; ++Index)
+    {
+        *Dest++ = *String;
+        ++Result;
+        ++String;
+    }
+    *Dest = 0;
+    return Result;
+}
 
 // NOTE(Axel): Start and End char will be in the return
 inline void str_cut(char *String, int Start, int End, char* Dest)

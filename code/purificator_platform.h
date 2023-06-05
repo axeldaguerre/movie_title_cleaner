@@ -8,7 +8,7 @@ typedef int s32;
 typedef long long s64;
 typedef s32 b32;
 
-#define MAX_PATH_SIZE 260;
+#define MAX_PATH_SIZE 260
 
 #define KiloBytes(Value) (Value*1024LL)
 #define MegaBytes(Value) (KiloBytes(Value)*1024LL)
@@ -33,6 +33,7 @@ typedef struct http_info
     char Query[60];
     char Search[30];
     char *ResponseData;
+    char *ResponseDataPointer;
     int ResponseDataSize;
     b32 HasFailed;
 } http_info;
@@ -44,8 +45,7 @@ struct movie
     char Year[4];
 };
 
-
-#define PLATFORM_MAKE_HTTP_REQUEST(name) http_info name(thread_context *Thread, http_info *HTTPInfo, app_file *File, movie *Movie)
+#define PLATFORM_MAKE_HTTP_REQUEST(name) void name(thread_context *Thread, http_info *HTTPInfo, app_file *File, movie *Movie)
 typedef PLATFORM_MAKE_HTTP_REQUEST(platform_make_http_request);
 
 
@@ -59,6 +59,10 @@ typedef struct app_memory
     void *PermanentMemory;
 } app_memory;
 
+typedef struct app_state
+{
+    char ResponseNoJS[500000];
+} app_state;
 
 #define GET_MOVIE_DATA(name) b32 name(thread_context *Thread, app_file *File, movie *Movie, http_info *HTTPInfo, app_memory *AppMemory)
 typedef GET_MOVIE_DATA(get_movie_data);
