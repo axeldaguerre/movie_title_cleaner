@@ -1,12 +1,36 @@
 @echo off
 IF NOT EXIST ..\build mkdir ..\build
 pushd ..\build
-SET CommonCompilerFlags=-MTd -nologo -fp:fast -Gm- -GR- -EHa- -Od -Oi -WX -W4 -wd4201 -wd4100 -wd4189 -wd4505 -DINTERNAL=1 -DINTERNAL=1 -FC -Z7
 
-REM call cl %CommonCompilerFlags% ..\code\web_formater.cpp /link %CommonLinkerFlags% 
-REM call clang -g -fuse-ld=lld ..\sim86.cpp -o sim86_clang_debug.exe
+set CommonCompilerFlags=-MTd -nologo -fp:fast -Gm- -GR- -EHa- -Od -Oi -WX -W4 -wd4201 -wd4100 -wd4189 -wd4505 -DHANDMADE_INTERNAL=1 -DHANDMADE_SLOW=1 -DHANDMADE_WIN32=1 -FC -Z7
+set CommonLinkerFlags= -incremental:no -opt:ref user32.lib gdi32.lib winmm.lib Wininet.lib Wininet.lib
+cl %CommonCompilerFlags% ..\code\purificator.cpp -Fmpurificator.map -LD /link -incremental:no -opt:ref -PDB:purificator.pdb -EXPORT:GetMovieData
 
-REM call cl -nologo -Zi -FC ..\website_formater.cpp -Fesim86_msvc_debug.exe
-REM call clang -g -fuse-ld=lld ..\code\folder_creator.cpp -o folder_creator_debug.exe 
-cl %CommonCompilerFlags% ../code/folder_creator.cpp /link -incremental:no -opt:ref user32.lib gdi32.lib Xinput.lib dsound.lib Winmm.lib wininet.lib
+cl %CommonCompilerFlags% ..\code\win32_purificator.cpp -Fmwin32_purificator.map /link %CommonLinkerFlags%
+
+popd
+
+
+
+
+@echo off
+
+
+
+
+REM TODO - can we just build both with one exe?
+
+IF NOT EXIST ..\..\build mkdir ..\..\build
+pushd ..\..\build
+
+REM 32-bit build
+REM cl %CommonCompilerFlags% ..\handmade\code\win32_handmade.cpp /link -subsystem:windows,5.1 %CommonLinkerFlags%
+
+REM 64-bit build
+del *.pdb > NUL 2> NUL
+REM Optimization switches /O2
+echo WAITING FOR PDB > lock.tmp
+
+del lock.tmp
+
 popd
