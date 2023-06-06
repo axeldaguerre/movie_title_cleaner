@@ -31,7 +31,6 @@ typedef struct app_file
 typedef struct http_info
 {
     char Query[60];
-    char Search[30];
     char *ResponseData;
     char *ResponseDataPointer;
     int ResponseDataSize;

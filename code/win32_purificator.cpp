@@ -66,13 +66,22 @@ PLATFORM_MAKE_HTTP_REQUEST(PlatformMakeHTTPRequest)
     }
     else
     {
-        HINTERNET ConnectHandle = InternetOpenUrlA(InternetHandle, HTTPInfo->Query, "Accept-Language: en\r\n",
+        HINTERNET ConnectHandle = InternetOpenUrlA(InternetHandle, HTTPInfo->Query, "Accept-Language: en-US;",
                                                    0, INTERNET_FLAG_RELOAD, 0);
-
-        if(ConnectHandle == 0)
+/*HttpOpenRequest(InternetHandle, "GET",
+                                                  HTTPInfo->Query, "HTTP/1.1",
+                                                  NULL, "en-US", INTERNET_FLAG_NO_UI, 0);
+        BOOL SendHandle = HttpSendRequest(ConnectHandle, L"", 0, 0, 0);
+*/
+        if(ConnectHandle == NULL)
         {
-            int Answer  = MessageBox( NULL, "Couldn't Connect to IMDB. \nPlease Connect to the internet then retry.",
-                                      "Internet Error", MB_OK);
+            DWORD Error = GetLastError();
+            DWORD Size;
+            char ErrorText[200];
+            
+            InternetGetLastResponseInfoA(&Error, ErrorText, &Size);
+            // TODO(Axel): Error text is not filled, tried with internet disconnected
+            int Answer  = MessageBox( NULL, ErrorText, "Internet Error", MB_OK);
             if(Answer == IDOK)
             {
                 OutputDebugStringA("User Accepted\n");
@@ -330,6 +339,7 @@ WinMain(HINSTANCE Instance,
             char FileNameNoExtension[MAX_PATH];
             str_cut_after_from_end(FileData.cFileName, ".", FileNameNoExtension);
             Assert(str_len(FileNameNoExtension) > 0);
+            // IMDB (too bloated, rotten way better) 
             wsprintf(HTTPInfo.Query, "https://www.imdb.com/find/?q=%s", FileNameNoExtension);
 
             movie Movie = {};

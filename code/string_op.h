@@ -133,14 +133,8 @@ inline b32 str_search_from_start(char *Pattern, int PatLen, char *Text, int *Cha
         
         if(IndexPat == PatLen)
         {
-            if(IndexPat != 0 && IndexText >= PatLen)
-            {
-                *Char = IndexText - PatLen;
-            }
-            else
-            {
-                *Char = 0;
-            }
+            *Char = IndexText;
+
             Result = true;
             break;
         }
@@ -237,7 +231,6 @@ inline b32 str_search_from_start(char *Pattern, int PatLen, char *Text,
     return Result;
 }
 
-
 inline int str_search_from_start_count(char *Pattern, char *Text)
 {
     int Result   = 0;
@@ -278,6 +271,56 @@ inline int str_copy(char *String, char *Dest)
 }
 
 
+inline int str_copy_by_char(char *String, char *Dest, char *FromChar, char *UntilChar)
+{
+    int Result = 0;
+    // TODO(Axel): Algo should handle handle same char
+    Assert(FromChar != UntilChar);
+
+    b32 HasReachStart = false;
+    for(char *Scan = String; *Scan; ++Scan)
+    {
+        if(char_at(Scan, 0) == *UntilChar)
+        {
+            ++Dest;
+            break;
+        }
+        else if(char_at(Scan, 0) == *FromChar)
+        {
+            ++Scan;
+            HasReachStart = true;
+        }
+        
+        if(HasReachStart)
+        {
+            *Dest++ = *Scan;
+            ++Result;
+        }
+    }
+    *Dest = 0;
+    return Result;
+}
+
+inline int str_copy(char *String, char *Dest, int Start, char *UntilChar)
+{
+    int Result = 0;
+    String += Start;
+    Assert(Start < str_len(String));
+    
+    for(char *Scan = String; *Scan; ++Scan)
+    {
+        if(*UntilChar == *Scan)
+        {
+            ++Dest;
+            break;
+        }
+        *Dest++ = *Scan;
+        ++Result;
+    }
+    *Dest = 0;
+    return Result;
+}
+
 inline int str_copy(char *String, char *Dest, int Start, int End)
 {
     Assert(Start < End);
@@ -295,7 +338,7 @@ inline int str_copy(char *String, char *Dest, int Start, int End)
 }
 
 // NOTE(Axel): Start and End char will be in the return
-inline void str_cut(char *String, int Start, int End, char* Dest)
+inline void str_cut(char *String, char* Dest, int Start, int End)
 {
     Assert(Start < End);
     String += Start;
