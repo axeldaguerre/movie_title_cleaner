@@ -6,32 +6,112 @@
 
 #include"purificator_platform.h"
 #include"win32_purificator.h"
-#include"string_op.h"
 
-
-PLATFORM_WRITE_ENTIRE_FILE(PlatformWriteEntireFile)
+PLATFORM_MOVE_FILE(PlatformMoveFile)
 {
     b32 Result = false;
+    wsprintf(File->NewPath, "%s\\%s", File->NewDirPath, File->FileName);
+
+    if(MoveFile(File->Path, File->NewPath))
+    {
+        Result = true;
+    }
+    return Result;
+}
+
+PLATFORM_CREATE_FOLDER(PlatformCreateFolder)
+{
+    char Title[100];
+    wsprintf(Title, "%s (%s)", Movie->Title, Movie->Year);
     
-    HANDLE FileHandle = CreateFileA(Filename, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, 0, 0);
+    str_concat((AppState->OnePastLastEXEFileNameSlash - AppState->EXEPath), AppState->EXEPath,
+               str_len(Title), Title,
+               str_len(File->NewDirPath), File->NewDirPath);
+             
+    b32 Result = false;
+    
+    if(CreateDirectory(File->NewDirPath, 0))
+    {
+        Result = true;
+    }
+
+    return Result;
+    
+}
+
+PLATFORM_FREE_MEMORY(PlatformFreeMemory)
+{
+    if(Memory)
+    {   
+        VirtualFree(Memory, 0, MEM_RELEASE);
+    }
+}
+
+PLATFORM_READ_ENTIRE_FILE(PlatformReadEntireFile)
+{
+    // STUDY(Axel): Use HeapAlloc()?     
+    debug_read_file_result Result = {};
+    
+    HANDLE FileHandle = CreateFileA(FileName, GENERIC_READ,
+                                    FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
     if(FileHandle != INVALID_HANDLE_VALUE)
     {
-        DWORD BytesWritten;
-        if(WriteFile(FileHandle, Memory, MemorySize, &BytesWritten, 0))
+        LARGE_INTEGER FileSize;
+        if(GetFileSizeEx(FileHandle, &FileSize))
         {
-            // NOTE(Axel): File read successfully
-            Result = (BytesWritten == MemorySize);
+            u32 FileSize32 = safe_truncate_u64(FileSize.QuadPart);
+            Result.Contents = VirtualAlloc(0, FileSize32, MEM_RESERVE|MEM_COMMIT,
+                                           PAGE_READWRITE);
+            if(Result.Contents)
+            {
+                DWORD BytesRead;
+                if(ReadFile(FileHandle, Result.Contents, FileSize32, &BytesRead, 0) &&
+                   (FileSize32 == BytesRead))
+                {
+                    Result.ContentsSize = FileSize32;
+                }
+                else
+                {
+                    PlatformFreeMemory(Thread, Result.Contents);
+                    Result.Contents = 0;
+                }
+            }
+            else
+            {
+            }
         }
         else
         {
-        }
 
+        }
         CloseHandle(FileHandle);
     }
     else
     {
     }
+    return Result;
+}
 
+PLATFORM_WRITE_ENTIRE_FILE(PlatformWriteEntireFile)
+{
+    b32 Result = false;
+
+    HANDLE FileHandle = CreateFileA(FileName, FILE_APPEND_DATA, 0, 0, OPEN_ALWAYS, 0, 0);
+
+    if(FileHandle != INVALID_HANDLE_VALUE)
+    {
+        DWORD BytesWritten;
+        
+        if(WriteFile(FileHandle, Memory, MemorySize, &BytesWritten, 0))
+        {
+            Result = (BytesWritten == MemorySize);
+        }
+    }
+    else
+    {            
+    }
+    CloseHandle(FileHandle);
+    
     return(Result);
 }
 
@@ -43,9 +123,10 @@ inline win32_app_code Win32LoadAppCode(char *SourceDLLName)
     if(Result.DLLAppCode)
     {
         Result.GetMovieData = (get_movie_data *)GetProcAddress(Result.DLLAppCode, "GetMovieData");
+        Result.CleanFileMovie = (clean_file_movie *)GetProcAddress(Result.DLLAppCode, "CleanFileMovie");
     }
     
-    Result.IsValid = (Result.GetMovieData && Result.GetMovieData);
+    Result.IsValid = (Result.GetMovieData && Result.CleanFileMovie);
 
     if(!Result.IsValid)
     {
@@ -201,15 +282,16 @@ inline b32 is_folder(char *Path)
     }
 
     DWORD Error = GetLastError();
-    Assert(Error == 0);
+
     return Result;
 }
 
 inline b32 is_program_file(char *String)
 {
     b32 Result = false;
-    char *Extensions[] = {".dll", ".map", "exp", ".lib", ".exe", ".obj", ".pdb", "..", ".vs", ".sln"};
-
+    char *Extensions[] = {".dll", ".map", "exp",
+                          ".lib", ".exe", ".obj",
+                          ".pdb", "..", ".vs", ".sln"};
     int AtChar = 0;
     
     for(int Index = 0; Index < ArrayCount(Extensions); ++Index)    
@@ -224,7 +306,7 @@ inline b32 is_program_file(char *String)
     return Result;
 }
 
-inline void win32_get_exe_file_name(win32_state *State)
+inline void win32_get_exe_file_name(app_state *State )
 {
     GetModuleFileName(0, State->EXEPath, sizeof(State->EXEPath));
     State->OnePastLastEXEFileNameSlash = State->EXEPath;
@@ -238,15 +320,14 @@ inline void win32_get_exe_file_name(win32_state *State)
     }
 }
 
-inline void win32_build_file_path(win32_state *State, char *FileName,
+inline void win32_build_file_path(app_state *State, char *FileName,
                                   int DestCount, char *Dest)
 {
     str_concat(State->OnePastLastEXEFileNameSlash - State->EXEPath, State->EXEPath,
-               str_len(FileName), FileName,
-               DestCount, Dest);    
+               str_len(FileName), FileName, DestCount, Dest);    
 }
 
-inline void win32_get_file_name(win32_state *State, char *Name, int DestCount, char *Dest)
+inline void win32_get_file_name(app_state *State, char *Name, int DestCount, char *Dest)
 {
     char Temp[64];
     wsprintf(Temp, "%s.meta", Name);
@@ -254,17 +335,17 @@ inline void win32_get_file_name(win32_state *State, char *Name, int DestCount, c
     win32_build_file_path(State, Temp, str_len(Name), Name);
 }
 
-inline void win32_get_file_exe(win32_state *Win32State)
+inline void win32_get_file_exe(app_state *State)
 {
-    DWORD SizeOfFileName = GetModuleFileName(0, Win32State->EXEPath, sizeof(Win32State->EXEPath));
-    Win32State->OnePastLastEXEFileNameSlash = Win32State->EXEPath;
-    for(char *Scan = Win32State->EXEPath;
+    DWORD SizeOfFileName = GetModuleFileName(0, State->EXEPath, sizeof(State->EXEPath));
+    State->OnePastLastEXEFileNameSlash = State->EXEPath;
+    for(char *Scan = State->EXEPath;
         *Scan;
         ++Scan)
     {
         if(*Scan == '\\')
         {
-            Win32State->OnePastLastEXEFileNameSlash = Scan + 1;
+            State->OnePastLastEXEFileNameSlash = Scan + 1;
         }
     }
 }
@@ -295,60 +376,80 @@ WinMain(HINSTANCE Instance,
     thread_context Thread = {};
 
     win32_state Win32State = {};
-    win32_get_file_exe(&Win32State);
     Win32State.MemorySize = MegaBytes(64);
-    Win32State.Memory = VirtualAlloc(BaseAddress, (size_t)Win32State.MemorySize,
+    Win32State.AppMemory = VirtualAlloc(BaseAddress, (size_t)Win32State.MemorySize,
                                      MEM_RESERVE|MEM_COMMIT,
                                      PAGE_READWRITE);
     
+    app_state AppState = {};
+    AppState.FileCount = 0;    
+    
+    win32_get_file_exe(&AppState);
+
+    
     char SourceAppCodeDLLFullPath[MAX_PATH];
-    win32_build_file_path(&Win32State, "purificator.dll",
+    win32_build_file_path(&AppState, "purificator.dll",
                           sizeof(SourceAppCodeDLLFullPath), SourceAppCodeDLLFullPath);
 
     win32_app_code App = Win32LoadAppCode(SourceAppCodeDLLFullPath);
    
     app_memory AppMemory = {};
-    AppMemory.PermanentMemory = Win32State.Memory;
+    AppMemory.PermanentMemory = Win32State.AppMemory;
     AppMemory.PlatformMakeHTTPRequest = PlatformMakeHTTPRequest;
     AppMemory.PlatformWriteEntireFile = PlatformWriteEntireFile;
-        
+    AppMemory.PlatformFreeMemory = PlatformFreeMemory;
+    AppMemory.PlatformReadEntireFile = PlatformReadEntireFile;
+    AppMemory.PlatformCreateFolder = PlatformCreateFolder;
+    AppMemory.PlatformMoveFile = PlatformMoveFile;
+    
     WIN32_FIND_DATA FileData = {};
     
     char FileSearchQuery[MAX_PATH];
-    str_concat((Win32State.OnePastLastEXEFileNameSlash - Win32State.EXEPath), Win32State.EXEPath,
+    str_concat((AppState.OnePastLastEXEFileNameSlash - AppState.EXEPath), AppState.EXEPath,
                str_len("*"), "*",
                str_len(FileSearchQuery), FileSearchQuery);
             
     Win32State.FileHandle = FindFirstFileA(FileSearchQuery, &FileData);
     
+
     for(;;)
     {        
-            
         if(FindNextFileA(Win32State.FileHandle, &FileData))
         {   
             if(is_program_file(FileData.cFileName)) continue;
 
             app_file File = {};
+            // TODO(Axel): Same trick than onePastEXE
+            str_copy(str_len(FileData.cFileName), FileData.cFileName,
+                     str_len(File.Path), File.Path);
             
-            win32_build_file_path(&Win32State, FileData.cFileName,
+            win32_build_file_path(&AppState, FileData.cFileName,
                                   str_len(File.Path), File.Path);
+            
             if(is_folder(File.Path)) continue;
 
             http_info HTTPInfo = {};
             
             char FileNameNoExtension[MAX_PATH];
-            str_cut_after_from_end(FileData.cFileName, ".", FileNameNoExtension);
+            str_cut_after_from_end(FileData.cFileName, FileNameNoExtension, ".");
             Assert(str_len(FileNameNoExtension) > 0);
-            // IMDB (too bloated, rotten way better) 
-            wsprintf(HTTPInfo.Query, "https://www.imdb.com/find/?q=%s", FileNameNoExtension);
+
+            wsprintf(HTTPInfo.Query, "https://www.rottentomatoes.com/search?search=%s", FileNameNoExtension);
 
             movie Movie = {};
+            Movie.IdFile = AppState.FileCount;
+            
             if(AppMemory.PermanentMemory)
             {
                 if(App.GetMovieData)
                 {
-                    App.GetMovieData(&Thread, &File, &Movie, &HTTPInfo, &AppMemory);
-                    //free(HTTPInfo.ResponseData);
+                    str_concat(AppState.OnePastLastEXEFileNameSlash - AppState.EXEPath, AppState.EXEPath,
+                               str_len("metadata.rot"), "metadata.rot",
+                               str_len(File.MetadataPath), File.MetadataPath);
+
+                    App.GetMovieData(&Thread, &File, &Movie, &HTTPInfo, &AppMemory, &AppState);
+                    
+                    ++AppState.FileCount;
                 }
             }
         }
@@ -357,5 +458,26 @@ WinMain(HINSTANCE Instance,
             break;
         }
     }
+    
+    str_concat(AppState.OnePastLastEXEFileNameSlash - AppState.EXEPath, AppState.EXEPath,
+               str_len("user_picks.pik"), "metadata.pik",
+               str_len(AppState.MoviesSelectedPath), AppState.MoviesSelectedPath);
+
+    int FilesCount = AppState.FileCount;
+    while(FilesCount)
+    {
+        App.CleanFileMovie(&Thread, &File, &AppMemory, &AppState, &Movie);        
+        --FilesCount;
+    }
+    
+    FilesCount = AppState.FileCount;
+    while(FilesCount)
+    {
+
+        --FilesCount;
+    }
+        
+
+    
     return 0;
 }

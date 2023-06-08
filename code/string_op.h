@@ -1,8 +1,8 @@
 #if !defined(STRING_OP_H)
 
 #define STRING_OP_H
-// TODO(Axel): Make the path size macro definition in one place only
-#define MAX_PATH_PURI 260
+
+#define MAX_PATH_APP 260
 
 inline int str_len(char *String)
 {
@@ -10,16 +10,15 @@ inline int str_len(char *String)
 
     while(*String != 0)
     {
-       ++Result;
-       ++String;
+        ++Result;
+        ++String;
     }
     return Result;
 }
 
-inline void
-str_concat(size_t SourceACount, char *SourceA,
-           size_t SourceBCount, char *SourceB,
-           size_t DestCount, char *Dest)
+inline void str_concat(size_t SourceACount, char *SourceA,
+                       size_t SourceBCount, char *SourceB,
+                       size_t DestCount, char *Dest)
 {
     
     for(int Index = 0;
@@ -69,12 +68,11 @@ inline void str_inverse(char *String, char *Dest)
 }
 
 // NOTE(Axel): This function is really not optimized for big strings Text
-// TODO: Make better readibility
 inline b32 str_search_from_end(char *Pattern, char *Text, int *AtChar)
 {   
-    char TextInverse[MAX_PATH_PURI];
+    char TextInverse[MAX_PATH_APP];
     str_inverse(Text, TextInverse);
-    char PatInverse[MAX_PATH_PURI];
+    char PatInverse[MAX_PATH_APP];
     str_inverse(Pattern, PatInverse);
     
     b32 Result    = false;
@@ -258,8 +256,24 @@ inline int str_search_from_start_count(char *Pattern, char *Text)
     return Result;
 }
 
-inline int str_copy(char *String, char *Dest)
+
+inline void remove_char_in_text(char *Text, char *Dest, char *Char)
 {
+    // TODO(Axel): Find a way to avoid a string or make the algorithm works with string
+    Assert(str_len(Char) == 1);
+    for(char *Scan = Text; *Scan; ++Scan)
+    {
+        if(char_at(Scan, 0) != char_at(Char, 0))
+        {
+            *Dest++ = *Scan;
+        }
+    }
+    *Dest = 0;
+}
+
+inline int str_copy(int StringLength, char *String, int DestLength, char *Dest)
+{
+    Assert(Dest)
     int Result = 0;
     for(char *Scan = String; *Scan; ++Scan)
     {
@@ -270,9 +284,10 @@ inline int str_copy(char *String, char *Dest)
     return Result;
 }
 
-
 inline int str_copy_by_char(char *String, char *Dest, char *FromChar, char *UntilChar)
 {
+    // TODO(Axel): Find a way to avoid a string or make the algorithm works with string
+    Assert(str_len(UntilChar) == 1);
     int Result = 0;
     // TODO(Axel): Algo should handle handle same char
     Assert(FromChar != UntilChar);
@@ -282,7 +297,7 @@ inline int str_copy_by_char(char *String, char *Dest, char *FromChar, char *Unti
     {
         if(char_at(Scan, 0) == *UntilChar)
         {
-            ++Dest;
+            ++Result;
             break;
         }
         else if(char_at(Scan, 0) == *FromChar)
@@ -296,6 +311,24 @@ inline int str_copy_by_char(char *String, char *Dest, char *FromChar, char *Unti
             *Dest++ = *Scan;
             ++Result;
         }
+    }
+    *Dest = 0;
+    return Result;
+}
+
+inline int str_copy_until(char *String, char *Dest, char *UntilChar)
+{
+    int Result = 0;
+    
+    for(char *Scan = String; *Scan; ++Scan)
+    {
+        if(*UntilChar == *Scan)
+        {
+            ++Result;
+            break;
+        }
+        *Dest++ = *Scan;
+        ++Result;
     }
     *Dest = 0;
     return Result;
@@ -400,18 +433,44 @@ inline b32 str_cut_after_from_start(char *String, char* Pattern, int PatLen, cha
     return Result;
 }
 
-inline b32 str_cut_after_from_end(char *String, char* Pattern, char *Dest)
+inline b32 str_cut_after_from_end(char *String,  char *Dest, char* Pattern)
 {
     b32 Result = true;
     int AtChar = 0;
     
     if(!str_search_from_end(Pattern, String, &AtChar)) return false;
     
-    str_copy(String, Dest);
+    str_copy(str_len(String), String, str_len(Dest), Dest);
     
     Dest[AtChar] = 0;
     
     return Result;
+}
+
+inline void replace_empties(char *Text, char *Dest)
+{
+    // TODO(Axel): Find a way to avoid the dest being too small
+    //             to get the Text **Trimed**. 
+    b32 Result = true;
+    // TODO(Axel): What Should we do on the size of the string Temp
+    int Index = 0;
+    for(char *Scan = Text; *Scan; ++Scan)
+    {
+        
+        if(char_at(Text, Index) == ' ')
+        {
+            
+            if(char_at(Text, Index+1) == ' ')
+            {
+                 ++Index;
+                 continue;
+            }            
+        }
+        ++Index;
+        *Dest++ = *Scan;   
+    }
+    *Dest = 0;
+    
 }
 
 #endif

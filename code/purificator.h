@@ -1,4 +1,3 @@
-#include"purificator_platform.h"
-
+#include "purificator_platform.h"
 
 
