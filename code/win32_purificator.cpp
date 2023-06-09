@@ -1,3 +1,4 @@
+
 #include <stdio.h>
 #include <windows.h>
 #include <stdlib.h>
@@ -7,36 +8,73 @@
 #include"purificator_platform.h"
 #include"win32_purificator.h"
 
-PLATFORM_MOVE_FILE(PlatformMoveFile)
+PLATFORM_MESSAGE_VALIDATION(PlatformMessageValidation)
 {
-    b32 Result = false;
-    wsprintf(File->NewPath, "%s\\%s", File->NewDirPath, File->FileName);
-
-    if(MoveFile(File->Path, File->NewPath))
+    b32 Result = true;
+    
+    char TextMessageBox[300];
+    wsprintf(TextMessageBox, "File Name: %s\n Movie title suggestion: %s (%s)",
+             Movie->IdFile, Movie->Title, Movie->Year);
+    
+    int Answer  = MessageBox( NULL, TextMessageBox, "Is the Movie Title right?",
+                              MB_YESNOCANCEL);
+    
+    if(Answer == IDOK)
     {
-        Result = true;
+        Result = 1;
+    }
+    if(Answer == IDNO)
+    {
+        Result = 0;
+    }
+    //TODO(Axel): should be able to stop the program
+    if(Answer == IDCANCEL)
+    {
+        Result = 3;
     }
     return Result;
 }
 
-PLATFORM_CREATE_FOLDER(PlatformCreateFolder)
+PLATFORM_MOVE_FILE(PlatformMoveFile)
 {
-    char Title[100];
-    wsprintf(Title, "%s (%s)", Movie->Title, Movie->Year);
+    b32 Result = true;
+
+    if(MoveFile(FilePath, NewFilePath))
+    {
+    }
+    else
+    {
+        Result = false;
+    }
     
-    str_concat((AppState->OnePastLastEXEFileNameSlash - AppState->EXEPath), AppState->EXEPath,
-               str_len(Title), Title,
-               str_len(File->NewDirPath), File->NewDirPath);
-             
+    return Result;
+}
+
+PLATFORM_CREATE_FOLDER(PlatformCreateFolder)
+{             
     b32 Result = false;
     
-    if(CreateDirectory(File->NewDirPath, 0))
+    if(CreateDirectory(FolderPath, 0))
     {
         Result = true;
     }
+    else
+    {
+        
+        if(GetLastError() == ERROR_PATH_NOT_FOUND)
+        {
+            MessageBox( NULL, "Couldn't create the directory\n Path doesn't exists",
+                        "Error Movie File Folder Creation", MB_OK);
+            AppState->GlobalRunning = false;
+            Result = false;
+        }
+        else
+        {
+            Result = true;
+        }
+    }
 
-    return Result;
-    
+    return Result;   
 }
 
 PLATFORM_FREE_MEMORY(PlatformFreeMemory)
@@ -124,6 +162,8 @@ inline win32_app_code Win32LoadAppCode(char *SourceDLLName)
     {
         Result.GetMovieData = (get_movie_data *)GetProcAddress(Result.DLLAppCode, "GetMovieData");
         Result.CleanFileMovie = (clean_file_movie *)GetProcAddress(Result.DLLAppCode, "CleanFileMovie");
+        Result.AskPickMovies = (ask_pick_movies *)GetProcAddress(Result.DLLAppCode, "AskPickMovies");
+        Result.DEBUGCheckUserPicksFile = (debug_check_user_picks_file *)GetProcAddress(Result.DLLAppCode, "DEBUGCheckUserPicksFile");
     }
     
     Result.IsValid = (Result.GetMovieData && Result.CleanFileMovie);
@@ -142,18 +182,13 @@ PLATFORM_MAKE_HTTP_REQUEST(PlatformMakeHTTPRequest)
 
     if (InternetHandle == NULL)
     {
-        OutputDebugStringA("InternetOpen failed \n");
         HTTPInfo->HasFailed = true;
     }
     else
     {
-        HINTERNET ConnectHandle = InternetOpenUrlA(InternetHandle, HTTPInfo->Query, "Accept-Language: en-US;",
+        HINTERNET ConnectHandle = InternetOpenUrlA(InternetHandle, HTTPInfo->Query,
+                                                   "Accept-Language: en-US;",
                                                    0, INTERNET_FLAG_RELOAD, 0);
-/*HttpOpenRequest(InternetHandle, "GET",
-                                                  HTTPInfo->Query, "HTTP/1.1",
-                                                  NULL, "en-US", INTERNET_FLAG_NO_UI, 0);
-        BOOL SendHandle = HttpSendRequest(ConnectHandle, L"", 0, 0, 0);
-*/
         if(ConnectHandle == NULL)
         {
             DWORD Error = GetLastError();
@@ -165,7 +200,7 @@ PLATFORM_MAKE_HTTP_REQUEST(PlatformMakeHTTPRequest)
             int Answer  = MessageBox( NULL, ErrorText, "Internet Error", MB_OK);
             if(Answer == IDOK)
             {
-                OutputDebugStringA("User Accepted\n");
+                AppState->GlobalRunning = false;
             }
         }
         else
@@ -204,7 +239,7 @@ PLATFORM_MAKE_HTTP_REQUEST(PlatformMakeHTTPRequest)
 
 }
 
-inline void UserConfirmation(movie *Movie)
+inline b32 UserConfirmation(movie *Movie)
 {
     b32 UserAnswer = false;
     
@@ -224,8 +259,10 @@ inline void UserConfirmation(movie *Movie)
     }
     else if(UserAnswer == IDCANCEL)
     {
-        UserAnswer = false;
+        UserAnswer = 3;
     }
+    
+    return UserAnswer;
 }
 
 inline void clean_file_name(char *String, char *Dest)
@@ -291,7 +328,7 @@ inline b32 is_program_file(char *String)
     b32 Result = false;
     char *Extensions[] = {".dll", ".map", "exp",
                           ".lib", ".exe", ".obj",
-                          ".pdb", "..", ".vs", ".sln"};
+                          ".pdb", "..", ".vs", ".sln", ".tmp", ".srt"};
     int AtChar = 0;
     
     for(int Index = 0; Index < ArrayCount(Extensions); ++Index)    
@@ -382,7 +419,8 @@ WinMain(HINSTANCE Instance,
                                      PAGE_READWRITE);
     
     app_state AppState = {};
-    AppState.FileCount = 0;    
+    AppState.GlobalRunning = true;
+    AppState.FileCount = 1; // NOTE(Axel): Should start at 1 (see ASK_PICK_MOVIES)
     
     win32_get_file_exe(&AppState);
 
@@ -401,7 +439,8 @@ WinMain(HINSTANCE Instance,
     AppMemory.PlatformReadEntireFile = PlatformReadEntireFile;
     AppMemory.PlatformCreateFolder = PlatformCreateFolder;
     AppMemory.PlatformMoveFile = PlatformMoveFile;
-    
+    AppMemory.PlatformMessageValidation = PlatformMessageValidation;
+        
     WIN32_FIND_DATA FileData = {};
     
     char FileSearchQuery[MAX_PATH];
@@ -412,13 +451,26 @@ WinMain(HINSTANCE Instance,
     Win32State.FileHandle = FindFirstFileA(FileSearchQuery, &FileData);
     
 
-    for(;;)
+    char DevFileToDelete[MAX_PATH];
+    str_concat((AppState.OnePastLastEXEFileNameSlash - AppState.EXEPath), AppState.EXEPath,
+               str_len("user_picks.tmp"), "user_picks.tmp",
+               str_len(DevFileToDelete), DevFileToDelete);
+    DeleteFile(DevFileToDelete);
+    
+    str_concat((AppState.OnePastLastEXEFileNameSlash - AppState.EXEPath), AppState.EXEPath,
+               str_len("metadata.tmp"), "metadata.tmp",
+               str_len(DevFileToDelete), DevFileToDelete);
+    DeleteFile(DevFileToDelete);
+
+    while(AppState.GlobalRunning)
     {        
         if(FindNextFileA(Win32State.FileHandle, &FileData))
         {   
             if(is_program_file(FileData.cFileName)) continue;
 
             app_file File = {};
+            str_copy(str_len(FileData.cFileName), FileData.cFileName,
+                     str_len(File.FileName), File.FileName);
             // TODO(Axel): Same trick than onePastEXE
             str_copy(str_len(FileData.cFileName), FileData.cFileName,
                      str_len(File.Path), File.Path);
@@ -437,19 +489,24 @@ WinMain(HINSTANCE Instance,
             wsprintf(HTTPInfo.Query, "https://www.rottentomatoes.com/search?search=%s", FileNameNoExtension);
 
             movie Movie = {};
-            Movie.IdFile = AppState.FileCount;
+            wsprintf(Movie.IdFile, "%s_%d", File.FileName, AppState.FileCount); 
             
             if(AppMemory.PermanentMemory)
             {
                 if(App.GetMovieData)
                 {
+
+                    char IdFileMovie[MAX_PATH];
+                    // TODO(Axel): Construct the full path 
+                    wsprintf(IdFileMovie, "%s_%d", File.FileName, AppState.FileCount);
+
+
                     str_concat(AppState.OnePastLastEXEFileNameSlash - AppState.EXEPath, AppState.EXEPath,
-                               str_len("metadata.rot"), "metadata.rot",
-                               str_len(File.MetadataPath), File.MetadataPath);
+                               str_len("metadata.tmp"), "metadata.tmp",
+                               str_len(AppState.MetadataPath), AppState.MetadataPath);
 
                     App.GetMovieData(&Thread, &File, &Movie, &HTTPInfo, &AppMemory, &AppState);
-                    
-                    ++AppState.FileCount;
+
                 }
             }
         }
@@ -460,23 +517,31 @@ WinMain(HINSTANCE Instance,
     }
     
     str_concat(AppState.OnePastLastEXEFileNameSlash - AppState.EXEPath, AppState.EXEPath,
-               str_len("user_picks.pik"), "metadata.pik",
+               str_len("user_picks.tmp"), "user_picks.tmp",
                str_len(AppState.MoviesSelectedPath), AppState.MoviesSelectedPath);
 
-    int FilesCount = AppState.FileCount;
-    while(FilesCount)
-    {
-        App.CleanFileMovie(&Thread, &File, &AppMemory, &AppState, &Movie);        
-        --FilesCount;
+    if(App.AskPickMovies)
+    {       
+        if(AppState.GlobalRunning && App.AskPickMovies(&Thread, &AppState, &AppMemory))
+        {
+            App.DEBUGCheckUserPicksFile(&Thread, &AppMemory, &AppState);
+            if(App.CleanFileMovie)
+            {
+                App.CleanFileMovie(&Thread, &AppMemory, &AppState);
+            }
+        }
     }
     
-    FilesCount = AppState.FileCount;
-    while(FilesCount)
-    {
 
-        --FilesCount;
-    }
-        
+    str_concat((AppState.OnePastLastEXEFileNameSlash - AppState.EXEPath), AppState.EXEPath,
+               str_len("user_picks.tmp"), "user_picks.tmp",
+               str_len(DevFileToDelete), DevFileToDelete);
+    DeleteFile(DevFileToDelete);
+    
+    str_concat((AppState.OnePastLastEXEFileNameSlash - AppState.EXEPath), AppState.EXEPath,
+               str_len("metadata.tmp"), "metadata.tmp",
+               str_len(DevFileToDelete), DevFileToDelete);
+    DeleteFile(DevFileToDelete);
 
     
     return 0;

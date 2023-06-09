@@ -4,6 +4,7 @@
 
 #define MAX_PATH_APP 260
 
+//TODO(Axel): Be more consistent on function paramaters (Ex: StringCount before Strin)
 inline int str_len(char *String)
 {
     int Result = 0;
@@ -395,6 +396,11 @@ inline void str_cut(char *String, char* Dest, int Start, int End)
 inline b32 str_are_equal(char *StringA, char *StringB)
 {
     b32 Result = true;
+    if(str_len(StringA) != str_len(StringB))
+    {
+        return Result = false;
+    }
+
     for(char *Scan = StringA; *Scan; ++Scan)
     {
         if(*Scan != *StringB++)
@@ -447,30 +453,58 @@ inline b32 str_cut_after_from_end(char *String,  char *Dest, char* Pattern)
     return Result;
 }
 
-inline void replace_empties(char *Text, char *Dest)
+// TODO(Axel): This function has a bug, it doesn't terminate the Dest with 0
+inline void str_trim_end(int StringCount, char *String, int DestCount, char *Dest)
+{
+
+    int Index = StringCount - 1;
+    for(char *Scan = String + StringCount; ;--Scan)
+    {
+        if(char_at(String, Index) == ' ')
+        {
+            *Scan = 0;
+        }
+        else
+        {
+            break;
+        }
+
+        --Index;        
+    }
+    
+    str_copy(StringCount, String, DestCount, Dest);
+}
+
+inline void replace_empties(int StringCount, char *String, int DestCount, char *Dest)
 {
     // TODO(Axel): Find a way to avoid the dest being too small
-    //             to get the Text **Trimed**. 
+    //             to get the String **Trimed**. 
     b32 Result = true;
     // TODO(Axel): What Should we do on the size of the string Temp
     int Index = 0;
-    for(char *Scan = Text; *Scan; ++Scan)
+    char Temp[100];
+    // STUDY(Axel): We should be able to move the pointer of Temp without doing below
+    char *Pointer = Temp;
+    for(char *Scan = String; *Scan; ++Scan)
     {
         
-        if(char_at(Text, Index) == ' ')
+        if(char_at(String, Index) == ' ')
         {
             
-            if(char_at(Text, Index+1) == ' ')
+            if(char_at(String, Index+1) == ' ')
             {
                  ++Index;
                  continue;
             }            
         }
         ++Index;
-        *Dest++ = *Scan;   
+        *Pointer++ = *Scan;
     }
-    *Dest = 0;
+    *Pointer = 0;
+
+    int TempCount = str_len(Temp);
     
+    str_trim_end(TempCount, Temp, DestCount, Dest);
 }
 
 #endif

@@ -10,6 +10,8 @@ Indeed it can takes you several hours to check every movies you have and check i
 Movie year is important because it's the only way to diffence two movies with the same names, even if in rare movies it's not true.
 
 ## To dos
+1. Be able to retrieve previous movie suggestion
+2. Handle the case where no suggestion have been validated
 2. Better checks
 3. Nicer User experience
 4. Better performance (Better string searching algo and structure)
@@ -21,6 +23,10 @@ Movie year is important because it's the only way to diffence two movies with th
 9. Add language support, User should be able to have specific language for all movies scrapped.
 10. Movie Poster displayed on suggestion in order to quicker make the decision
 11. Integrate test, for example string_op.h changes should not break. As I've not made strong decision about its design.
+12. Make the code more robust if the files moved from when the movie suggestions where picked
+13. Handle the disconnexion of the hdd 
+14. Generate folders only for media type files
+15. Rename files
 
 This is a personal tool that permit me to automatically manage my media library for Kodi.
 The future of this tool will be to have a friendly way to do simple operation that will use imdb **without api key needed** to get a proper movie name, use for the folder that will contain the movie data to properly have a name scrapable by imdb python api. 

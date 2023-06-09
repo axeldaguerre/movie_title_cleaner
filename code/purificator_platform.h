@@ -22,6 +22,7 @@ typedef s32 b32;
 
 #include"string_op.h"
 
+
 inline u32 safe_truncate_u64(u64 Value)
 {
     Assert(Value <= 0xFFFFFFFF);
@@ -39,10 +40,9 @@ typedef struct app_file
     char NewDirPath[MAX_PATH_SIZE];
     char NewPath[MAX_PATH_SIZE];
 
-    char FileName[100];
+    char FileName[MAX_PATH_SIZE];
     
     char Path[MAX_PATH_SIZE];
-    char MetadataPath[MAX_PATH_SIZE];
 } app_file;
 
 typedef struct debug_read_file_result
@@ -61,26 +61,27 @@ typedef struct http_info
     u8 MovieCount;
 } http_info;
 
-#pragma pack(push,1) // TODO(Axel): Delete if not needed
-
 struct movie
 {
-    u16 IdFile;
+    char IdFile[100];
     char Title[100];
-    char Year[4];
+    char Year[5];
 };
-#pragma pack(pop)
 
 struct app_state
 {
+    b32 GlobalRunning;
+    // TODO(Axel): change it to "FileIndex"
     u16 FileCount;
-    char MoviesSelectedPath[MAX_PATH_SIZE];
+    
+    char MoviesSelectedPath[MAX_PATH_SIZE];   
+    char MetadataPath[MAX_PATH_SIZE];
     
     char EXEPath[MAX_PATH_SIZE];
     char *OnePastLastEXEFileNameSlash;
 };
 
-#define PLATFORM_MAKE_HTTP_REQUEST(name) void name(thread_context *Thread, http_info *HTTPInfo, app_file *File, movie *Movie)
+#define PLATFORM_MAKE_HTTP_REQUEST(name) void name(thread_context *Thread, http_info *HTTPInfo, app_file *File, movie *Movie, app_state *AppState)
 typedef PLATFORM_MAKE_HTTP_REQUEST(platform_make_http_request);
 
 #define PLATFORM_WRITE_ENTIRE_FILE(name) b32 name(thread_context *Thread, char *FileName, u32 MemorySize, void *Memory)
@@ -92,11 +93,14 @@ typedef PLATFORM_READ_ENTIRE_FILE(platform_read_entire_file);
 #define PLATFORM_FREE_MEMORY(name) void name(thread_context *Thread, void *Memory)
 typedef PLATFORM_FREE_MEMORY(platform_free_memory);
 
-#define PLATFORM_CREATE_FOLDER(name) b32 name(thread_context *Thread, char *FileName, app_state *AppState, movie *Movie, app_file *File)
+#define PLATFORM_CREATE_FOLDER(name) b32 name(thread_context *Thread, app_state *AppState, char *FolderPath)
 typedef PLATFORM_CREATE_FOLDER(platform_create_folder);
 
-#define PLATFORM_MOVE_FILE(name) b32 name(thread_context *Thread, char *FileName, app_file *File, movie *Movie)
+#define PLATFORM_MOVE_FILE(name) b32 name(thread_context *Thread, char *FilePath, char *NewFilePath)
 typedef PLATFORM_MOVE_FILE(platform_move_file);
+// TODO(Axel): Should be a text in the parameter and not a movie
+#define PLATFORM_MESSAGE_VALIDATION(name) b32 name(thread_context *Thread, movie *Movie)
+typedef PLATFORM_MESSAGE_VALIDATION(platform_message_validation);
 
 typedef struct app_memory
 {
@@ -108,6 +112,8 @@ typedef struct app_memory
 
     platform_create_folder *PlatformCreateFolder;
     platform_move_file *PlatformMoveFile;
+
+    platform_message_validation *PlatformMessageValidation;
     
     void *PermanentMemory;
 } app_memory;
@@ -115,6 +121,11 @@ typedef struct app_memory
 #define GET_MOVIE_DATA(name) b32 name(thread_context *Thread, app_file *File, movie *Movie, http_info *HTTPInfo, app_memory *AppMemory, app_state *AppState)
 typedef GET_MOVIE_DATA(get_movie_data);
 
-#define CLEAN_FILE_MOVIE(name) app_file name(thread_context *Thread, app_file *File, app_memory *AppMemory, app_state *AppState, movie *Movie)
+#define CLEAN_FILE_MOVIE(name) app_file name(thread_context *Thread, app_memory *AppMemory, app_state *AppState)
 typedef CLEAN_FILE_MOVIE(clean_file_movie);
 
+#define ASK_PICK_MOVIES(name) b32 name(thread_context *Thread, app_state *AppState, app_memory *AppMemory)
+typedef ASK_PICK_MOVIES(ask_pick_movies);
+
+#define DEBUG_CHECK_USER_PICKS_FILE(name) b32 name(thread_context *Thread, app_memory *AppMemory, app_state *AppState)
+typedef DEBUG_CHECK_USER_PICKS_FILE(debug_check_user_picks_file);
