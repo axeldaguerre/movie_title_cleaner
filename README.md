@@ -27,6 +27,8 @@ Movie year is important because it's the only way to diffence two movies with th
 13. Handle the disconnexion of the hdd 
 14. Generate folders only for media type files
 15. Rename files
+16. Check if it handles other language than english (should be)
+17. Add a loading screen during scrapping of all movies
 
 This is a personal tool that permit me to automatically manage my media library for Kodi.
 The future of this tool will be to have a friendly way to do simple operation that will use imdb **without api key needed** to get a proper movie name, use for the folder that will contain the movie data to properly have a name scrapable by imdb python api. 
