@@ -1,6 +1,44 @@
 #include "purificator.h"
 #define HTML_CHAR_SKIP_OPTIMIZATION 50000
 
+// NOTE(Axel): Linux, Raspberry and other is more permissive than Windows on file path
+//             we disallow the same as Windows for all OS and get the same behaviour on
+//             all platforms.
+// NOTE(Axel): Omitting the char not allowed is enought, because the application is only
+//             formatting the files's name, the media software (i.e. Kodi) will scrap the
+//             movie for you and find a match even without the special charactere
+// NOTE(Axel): We replace them by a ' ' in order to avoid to empty the string before 
+inline void remove_disallowed_chars(int StringCount, char *String, char *Dest)
+{
+    static char *DisallowChars[]= {"<", ">", ":", "\"", "/", "\\", "|", "?", "*", "\n", "\'"};
+
+    for(char *Scan = String; *Scan; ++Scan)
+    {
+        b32 Skip = false;
+        
+        for(int Index = 0; Index <= (ArrayCount(DisallowChars) - 1); ++Index)
+        {
+            char Temp[1];
+            str_copy(1, DisallowChars[Index], 1, Temp); 
+            if(str_are_equal(1, Temp, 1, Scan))
+            {
+                Skip = true;
+                break;
+            }
+        }
+        
+        if(!Skip)
+        {
+            *Dest++ = *Scan;
+        }
+        else
+        {
+            *Dest++ = ' ';
+        }
+    }
+    *Dest = 0;
+}
+
 inline void build_file_path(app_state *AppState, char *FileName, char* Dest)
 {
     str_concat((AppState->OnePastLastEXEFileNameSlash - AppState->EXEPath), AppState->EXEPath,
@@ -13,21 +51,24 @@ extern "C" DEBUG_CHECK_USER_PICKS_FILE(DEBUGCheckUserPicksFile)
     b32 Result = true;
     if(AppMemory->PlatformReadEntireFile)
     {
-        debug_read_file_result FileRead = AppMemory->PlatformReadEntireFile(Thread, AppState->MoviesSelectedPath);
-        u32 ContentsSizeLeft = FileRead.ContentsSize;
-        
+        debug_read_file_result FileRead = AppMemory->PlatformReadEntireFile(Thread,
+                                                                            AppState->MoviesSelectedPath);        
         // NOTE(Axel): All movies are in the correct order, we only need to check the next movie
         char PreviousFileId[100] ;
         if(FileRead.ContentsSize != 0)
         {
             movie *Movie = (movie*)FileRead.Contents;
+
             str_copy(str_len(Movie->IdFile), Movie->IdFile,
                      str_len(PreviousFileId), PreviousFileId);
-
-            while(ContentsSizeLeft)
+            
+            int MovieCount =  FileRead.ContentsSize / sizeof(movie);
+            for(int IndexMovie = 1; IndexMovie <= MovieCount-1; ++IndexMovie)
             {
                 ++Movie;
-                if(str_are_equal(Movie->IdFile, PreviousFileId))
+                // TODO(Axel): We should have a bug when string is 0
+                if(str_are_equal(str_len(Movie->IdFile), Movie->IdFile,
+                                 str_len(PreviousFileId), PreviousFileId))
                 {
                     //TODO(Axel): Change the message box type 
                     str_copy(str_len("The file of the movies selected are corrupted, cancel it"), "The file of the movies selected are corrupted, cancel it",
@@ -36,8 +77,8 @@ extern "C" DEBUG_CHECK_USER_PICKS_FILE(DEBUGCheckUserPicksFile)
                     AppState->GlobalRunning = false;
                     AppMemory->PlatformMessageValidation(Thread, Movie);
                     break;
-                };
-                ContentsSizeLeft -= sizeof(movie);
+                }
+
             }
         }
     }
@@ -78,7 +119,8 @@ extern "C" ASK_PICK_MOVIES(AskPickMovies)
                                 str_copy(str_len(Movie->IdFile), Movie->IdFile,
                                          str_len(IdFile), IdFile);
 
-                                while(ContentsSizeLeft > 0 && str_are_equal(Movie->IdFile, IdFile))
+                                while(ContentsSizeLeft > 0 && str_are_equal(str_len(Movie->IdFile), Movie->IdFile,
+                                                                            str_len(IdFile), IdFile))
                                 {
                                     ++Movie;
                                     ContentsSizeLeft -= sizeof(movie);
@@ -125,35 +167,48 @@ extern "C" CLEAN_FILE_MOVIE(CleanFileMovie)
 
     if(FileRead.ContentsSize != 0)
     {
-
+         // TODO(Axel): Ugly, create the wsprint like function or use sprint
+        //              in order to get rid of most Buffers
         u32 ContentsSizeLeft = FileRead.ContentsSize;
         movie *Movie = (movie*)FileRead.Contents;
-        char FileName[150];
-        char FolderName[150];
-        char FolderPath[MAX_PATH_APP];
-        char FilePath[MAX_PATH_APP];
-        char NewFilePath[MAX_PATH_APP];
+        char YearWithParenthesis[10];
+        char YearWithParenthesis2[10];
+
         while(ContentsSizeLeft)
-        {           
-            
-            str_concat(str_len(Movie->Title), Movie->Title,
+        {
+
+            str_concat(str_len("("), "(",
                        str_len(Movie->Year), Movie->Year,
-                       str_len(FolderName), FolderName);
-                
+                       str_len(YearWithParenthesis), YearWithParenthesis);
+
+            str_concat(str_len(YearWithParenthesis), YearWithParenthesis,
+                       str_len(")"), ")",
+                       str_len(YearWithParenthesis2), YearWithParenthesis2);
+            
+            char Temp[MAX_PATH_APP];
+            str_concat(str_len(Movie->Title), Movie->Title,
+                       str_len(YearWithParenthesis2), YearWithParenthesis2,
+                       str_len(Temp), Temp);
+
+            char FolderName[150];
+            remove_disallowed_chars(str_len(Temp), Temp, FolderName);
+            
+            char FolderPath[MAX_PATH_APP];            
             build_file_path(AppState, FolderName, FolderPath);
-            
+
             if(AppMemory->PlatformCreateFolder(Thread, AppState, FolderPath))
-            {                
-
+            {
+                char FileName[150];
                 str_copy_until(Movie->IdFile, FileName, "_");
-            
-                build_file_path(AppState, FileName, FilePath);
 
-                char Temp[MAX_PATH_APP];
+                char FilePath[MAX_PATH_APP];
+                build_file_path(AppState, FileName, FilePath);
+                
                 str_concat(str_len(FolderPath), FolderPath,
                            str_len("\\"), "\\",
                            str_len(Temp), Temp);
                 
+                char NewFilePath[MAX_PATH_APP];                
                 str_concat(str_len(Temp), Temp,
                            str_len(FileName), FileName,
                            str_len(NewFilePath), NewFilePath);
@@ -208,7 +263,12 @@ extern "C" GET_MOVIE_DATA(GetMovieData)
     int MatchAt           = 0;
     int SearchLength      = 0;
 
-    AppMemory->PlatformMakeHTTPRequest(Thread, HTTPInfo, File, Movie, AppState);
+    if(!AppMemory->PlatformMakeHTTPRequest(Thread, HTTPInfo, File, Movie, AppState,
+                                       AppMemory->PermanentMemory,
+                                          (int)AppMemory->PermanentStorageSize))
+    {
+        return Result;
+    }
     
     ++AppState->FileCount;
     
@@ -238,14 +298,26 @@ extern "C" GET_MOVIE_DATA(GetMovieData)
                                       str_len("slot=\"title\">"),
                                       HTTPPointer, &MatchAt);
                 HTTPPointer +=  MatchAt;                
-                
+
+                //TODO(Axel): This is dumb, find a better way to handle it
                 char Temp2[150];
+                char Temp3[150];
                 str_copy_by_char(HTTPPointer, Temp, ">", "<");
 
                 // NOTE(AXEL): Multiple white space by one space
                 replace_empties(str_len(Temp), Temp, str_len(Temp2), Temp2);
+                if(str_contains(Temp2, ";"))
+                {
+                    str_convert_to_ascii(str_len(Temp2), Temp2, str_len(Temp3), Temp3);
+                    remove_char_in_text(Temp3, Movie->Title, "\n");
+                }
+                else
+                {
+                    remove_char_in_text(Temp2, Movie->Title, "\n");
+                }
+
                 // TODO(Axel): Trim end of the string
-                remove_char_in_text(Temp2, Movie->Title, "\n");
+
                 
                 int IndexUl = 0;
                 int IndexSearch = 0;

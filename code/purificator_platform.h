@@ -55,9 +55,8 @@ typedef struct http_info
 {
     char Query[60];
     char *ResponseData;
-    char *ResponseDataPointer;
     int ResponseDataSize;
-    b32 HasFailed;
+
     u8 MovieCount;
 } http_info;
 
@@ -81,7 +80,7 @@ struct app_state
     char *OnePastLastEXEFileNameSlash;
 };
 
-#define PLATFORM_MAKE_HTTP_REQUEST(name) void name(thread_context *Thread, http_info *HTTPInfo, app_file *File, movie *Movie, app_state *AppState)
+#define PLATFORM_MAKE_HTTP_REQUEST(name) b32 name(thread_context *Thread, http_info *HTTPInfo, app_file *File, movie *Movie, app_state *AppState, void *Memory, int MemorySize)
 typedef PLATFORM_MAKE_HTTP_REQUEST(platform_make_http_request);
 
 #define PLATFORM_WRITE_ENTIRE_FILE(name) b32 name(thread_context *Thread, char *FileName, u32 MemorySize, void *Memory)
@@ -113,8 +112,10 @@ typedef struct app_memory
     platform_create_folder *PlatformCreateFolder;
     platform_move_file *PlatformMoveFile;
 
+
     platform_message_validation *PlatformMessageValidation;
     
+    u64 PermanentStorageSize;    
     void *PermanentMemory;
 } app_memory;
 

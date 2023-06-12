@@ -9,7 +9,20 @@ Its a usefull tool for media movie managers like `Kodi` and was created for that
 Indeed it can takes you several hours to check every movies you have and check if their title and years are the good ones.
 Movie year is important because it's the only way to diffence two movies with the same names, even if in rare movies it's not true.
 
+# How to use
+
+1. Place the `purificator.exe` file inside the folder where all the movies you want to format are.
+2. Run `purificator.exe`.
+3. It will scrap all the movies in order to ask for suggestions. It can be quite long if you have hundreds of movies as it scrap the website and extract the informations
+4. A `MessageBox` window suggest your a movie title with the according movie file. From here you have three possibilities:
+    - `Yes`: You accept the current suggestion, it moves to the **next movie file**.
+    - `No`: You don't want this suggestion, it moves the next suggestions scrapped for **the current movie file** 
+    - `Cancel`: It cancel the program **and make no modifications**
+5. Done, you will have all movie files inside a folder with the name of the suggestions accepted previously.
+
+
 ## To dos
+
 1. Be able to retrieve previous movie suggestion
 2. Handle the case where no suggestion have been validated
 2. Better checks
@@ -29,6 +42,10 @@ Movie year is important because it's the only way to diffence two movies with th
 15. Rename files
 16. Check if it handles other language than english (should be)
 17. Add a loading screen during scrapping of all movies
+18. Make possible a complete revert of the state if error occur
+19. Personalized `DialogBox`
+20. A way to copy the movie's title
+21. A way to skip a movie
 
 This is a personal tool that permit me to automatically manage my media library for Kodi.
 The future of this tool will be to have a friendly way to do simple operation that will use imdb **without api key needed** to get a proper movie name, use for the folder that will contain the movie data to properly have a name scrapable by imdb python api. 

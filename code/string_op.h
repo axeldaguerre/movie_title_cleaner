@@ -7,14 +7,12 @@
 //TODO(Axel): Be more consistent on function paramaters (Ex: StringCount before Strin)
 inline int str_len(char *String)
 {
-    int Result = 0;
-
-    while(*String != 0)
+     int Count = 0;
+    while(*String++)
     {
-        ++Result;
-        ++String;
+        ++Count;
     }
-    return Result;
+    return(Count);
 }
 
 inline void str_concat(size_t SourceACount, char *SourceA,
@@ -109,6 +107,7 @@ inline b32 str_search_from_end(char *Pattern, char *Text, int *AtChar)
 //             you can optimize its perf by having the start of the pattern the most unique possible,
 //             by doing it you minimize the number of match.
 // TODO(Axel): Implement perf log
+// TODO(Axel): respect parameter usual order
 inline b32 str_search_from_start(char *Pattern, int PatLen, char *Text, int *Char)
 {
     b32 Result    = false;
@@ -260,11 +259,10 @@ inline int str_search_from_start_count(char *Pattern, char *Text)
 
 inline void remove_char_in_text(char *Text, char *Dest, char *Char)
 {
-    // TODO(Axel): Find a way to avoid a string or make the algorithm works with string
     Assert(str_len(Char) == 1);
     for(char *Scan = Text; *Scan; ++Scan)
     {
-        if(char_at(Scan, 0) != char_at(Char, 0))
+        if(*Scan != *Char)
         {
             *Dest++ = *Scan;
         }
@@ -393,22 +391,36 @@ inline void str_cut(char *String, char* Dest, int Start, int End)
 
 }
 
-inline b32 str_are_equal(char *StringA, char *StringB)
+inline int str_index_of_terminating (int StringCount, char *String)
+{
+    int Result = 0;
+    int Index = 0;
+    while(Index < StringCount)
+    {
+        if(char_at(String, Index))
+        {
+            Result = Index;    
+        }
+        ++Index;        
+    }
+    
+    return Result;
+}
+
+inline b32 str_are_equal(int StringCountA, char *StringA, int StringCountB, char *StringB)
 {
     b32 Result = true;
-    if(str_len(StringA) != str_len(StringB))
-    {
-        return Result = false;
-    }
 
-    for(char *Scan = StringA; *Scan; ++Scan)
+    for(int Index = 0; Index < StringCountA; ++Index)
     {
-        if(*Scan != *StringB++)
+        if(*StringA++ != *StringB++)
         {
             Result = false;
             break;
         }
+        
     }
+    
     return Result;
 }
 
@@ -418,7 +430,7 @@ inline b32 str_cut_after_from_start(char *String, char* Pattern, int PatLen, cha
 {
     b32 Result = false;
     int MatchCharAt = 0;
-    if(str_search_from_start(Pattern, PatLen, String, &MatchCharAt)) return false;
+    if(!str_search_from_start(Pattern, PatLen, String, &MatchCharAt)) return false;
     char *Pointer = Dest;
     
     for(int IndexChar = 0; IndexChar < str_len(String); ++IndexChar)
@@ -507,4 +519,133 @@ inline void replace_empties(int StringCount, char *String, int DestCount, char *
     str_trim_end(TempCount, Temp, DestCount, Dest);
 }
 
+// TODO(Axel): Issues occured when you want to deal with char '' and char ""
+// NOTE(Axel): Works only with ''         
+inline b32 str_contains(char *String, char *Char)
+{
+    b32 Result = false;
+    b32 Index = 0;
+    for(char *Scan = String; *Scan; ++Scan)
+    {
+        if(*Scan == *Char)
+        {
+            Result = Index;
+            break;
+        }
+        ++Index;
+    }
+
+    return Result;
+}
+
+struct ascii_table
+{
+    char **Encodings;
+    int AsciiCount;
+};
+
+// TODO(Axel): Use preprocessor if possible and needed
+// NOTE(Axel): Index 0 is a non-existing term, and permit nice
+//             initialization for index's logics
+static char *Raw[] =
+{
+    "&#0;", "&#1;", "&#2;", "&#3;", "&#4;", "&#5;", "&#6;", "&#7;",
+    "&#8;", "&#9;", "&#10;", "&#11;", "&#12;", "&#13;", "&#14;", "&#15;",
+    "&#16;", "&#17;", "&#18;", "&#19;", "&#20;", "&#21;", "&#22;", "&#23;",
+    "&#24;", "&#25;", "&#26;", "&#27;", "&#28;", "&#29;", "&#30;", "&#31;",
+    "&#32;", "&#33;", "&#34;", "&#35;", "&#36;", "&#37;", "&#38;", "&#39;",
+    "&#40;", "&#41;", "&#42;", "&#43;", "&#44;", "&#45;", "&#46;", "&#47;",
+    "&#48;", "&#49;", "&#50;", "&#51;", "&#52;", "&#53;", "&#54;", "&#55;",
+    "&#56;", "&#57;", "&#58;", "&#59;", "&#60;", "&#61;", "&#62;", "&#63;",
+    "&#64;", "&#65;", "&#66;", "&#67;", "&#68;", "&#69;", "&#70;", "&#71;",
+    "&#72;", "&#73;", "&#74;", "&#75;", "&#76;", "&#77;", "&#78;", "&#79;",
+    "&#80;", "&#81;", "&#82;", "&#83;", "&#84;", "&#85;", "&#86;", "&#87;",
+    "&#88;", "&#89;", "&#90;", "&#91;", "&#92;", "&#93;", "&#94;", "&#95;",
+    "&#96;", "&#97;", "&#98;", "&#99;", "&#100;", "&#101;", "&#102;", "&#103;",
+    "&#104;", "&#105;", "&#106;", "&#107;", "&#108;", "&#109;", "&#110;", "&#111;",
+    "&#112;", "&#113;", "&#114;", "&#115;", "&#116;", "&#117;", "&#118;", "&#119;",
+    "&#120;", "&#121;", "&#122;", "&#123;", "&#124;", "&#125;", "&#126;", "&#127;",
+    "&amp;"
+};
+   
+static char *Replacement[] =
+{
+    "\0", "\x01", "\x02", "\x03", "\x04", "\x05", "\x06", "\a", "\b", "\t",
+    "\n", "\v", "\f", "\r", "\x0E", "\x0F", "\x10", "\x11", "\x12", "\x13",
+    "\x14", "\x15", "\x16", "\x17", "\x18", "\x19", "\x1A", "\x1B", "\x1C",
+    "\x1D", "\x1E", "\x1F", " ", "!", "\"", "#", "$", "%", "&", "\'", "(", ")",
+    "*", "+", ",", "-", ".", "/", "0", "1", "2", "3", "4", "5", "6", "7", "8",
+    "9", ":", ";", "<", "=", ">", "?", "@", "A", "B", "C", "D", "E", "F", "G",
+    "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V",
+    "W", "X", "Y", "Z", "[", "\\", "]", "^", "_", "`", "a", "b", "c", "d", "e",
+    "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t",
+    "u", "v", "w", "x", "y", "z", "{", "|", "}", "~", "\x7F", "&"
+};
+
+static ascii_table get_ascii_table()
+{
+    ascii_table Result = {};
+    
+    Result.AsciiCount = ArrayCount(Raw);
+    Result.Encodings = Raw;
+    
+    return Result;
+}
+
+static ascii_table get_replacement_ascii_table()
+{
+    ascii_table Result = {};
+    Result.AsciiCount = ArrayCount(Raw);
+    Result.Encodings = Replacement;
+    return Result;
+}
+
+inline void str_convert_to_ascii(int StringCount, char *String, int DestCount, char *Dest)
+{
+    ascii_table Ascii = get_ascii_table();
+    ascii_table AsciiRep = get_replacement_ascii_table();
+
+    int StringLen = str_len(String);
+    int CharAt = 0;
+    for(int Index = 0; Index <= StringLen ; ++Index)
+    {
+        if(*String!= '&')
+        {
+            *Dest++ = *String++;
+            continue;
+        }
+        else if(str_search_from_start("&", str_len("&"), String, &CharAt))
+        {            
+            int CharEnd = 0;
+            str_search_from_start(";", str_len(";"), String, &CharEnd);
+            
+            char AsciiTermString[6];
+            int AsciiTermStringLen = (CharEnd - CharAt) + 1;
+            str_cut(String, AsciiTermString, CharAt, CharEnd);
+            
+            for(int IndexTable = 0; IndexTable <= Ascii.AsciiCount; ++IndexTable)
+            {
+                char AsciiTermTable[6];
+                char AsciiTermRepl[6];
+                int AsciiTermTableLen = str_len(Ascii.Encodings[IndexTable]);
+                
+                str_copy(AsciiTermTableLen, Ascii.Encodings[IndexTable],
+                         str_len(AsciiTermTable), AsciiTermTable);
+                
+                if(str_are_equal(AsciiTermStringLen, AsciiTermString,
+                                 AsciiTermTableLen, AsciiTermTable))
+                {
+                    str_copy(str_len(AsciiRep.Encodings[IndexTable]), AsciiRep.Encodings[IndexTable],
+                             str_len(AsciiTermRepl), AsciiTermRepl);
+                    
+                    str_copy(str_len(AsciiTermRepl), AsciiTermRepl, str_len(Dest), Dest);
+                    
+                    ++Dest;
+                    String += AsciiTermStringLen;
+                    break;
+                }
+            }
+        }
+    }
+}
 #endif

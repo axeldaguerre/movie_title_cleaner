@@ -17,7 +17,7 @@ PLATFORM_MESSAGE_VALIDATION(PlatformMessageValidation)
              Movie->IdFile, Movie->Title, Movie->Year);
     
     int Answer  = MessageBox( NULL, TextMessageBox, "Is the Movie Title right?",
-                              MB_YESNOCANCEL);
+                              MB_YESNOCANCEL|MB_TOPMOST);
     
     if(Answer == IDOK)
     {
@@ -53,7 +53,6 @@ PLATFORM_MOVE_FILE(PlatformMoveFile)
 PLATFORM_CREATE_FOLDER(PlatformCreateFolder)
 {             
     b32 Result = false;
-    
     if(CreateDirectory(FolderPath, 0))
     {
         Result = true;
@@ -178,11 +177,11 @@ inline win32_app_code Win32LoadAppCode(char *SourceDLLName)
 PLATFORM_MAKE_HTTP_REQUEST(PlatformMakeHTTPRequest)
 {
 
+    b32 Result = true;
     HINTERNET InternetHandle = InternetOpen("IMDB's Connexion", INTERNET_OPEN_TYPE_DIRECT, NULL, NULL, 0);
 
     if (InternetHandle == NULL)
     {
-        HTTPInfo->HasFailed = true;
     }
     else
     {
@@ -191,16 +190,16 @@ PLATFORM_MAKE_HTTP_REQUEST(PlatformMakeHTTPRequest)
                                                    0, INTERNET_FLAG_RELOAD, 0);
         if(ConnectHandle == NULL)
         {
-            DWORD Error = GetLastError();
-            DWORD Size;
             char ErrorText[200];
             
-            InternetGetLastResponseInfoA(&Error, ErrorText, &Size);
-            // TODO(Axel): Error text is not filled, tried with internet disconnected
+            str_copy(str_len("Couldn't make the internet call, check your internet connexion"),
+                             "Couldn't make the internet call, check your internet connexion",
+                             str_len(ErrorText), ErrorText);
             int Answer  = MessageBox( NULL, ErrorText, "Internet Error", MB_OK);
             if(Answer == IDOK)
             {
                 AppState->GlobalRunning = false;
+                return false;
             }
         }
         else
@@ -208,35 +207,20 @@ PLATFORM_MAKE_HTTP_REQUEST(PlatformMakeHTTPRequest)
             DWORD BytesWritten    = 0;
             DWORD BytesRead       = 0;
             DWORD ContentLen = 0;
-            // NOTE(Axel): Sadly the server doesn't answer for the Content-Length, so we have to
-            //             allocate dynamically. I should be able to avoid it if needed by checking
-            //             https://github.com/nothings/stb
-
-            const int BufferSize = 4096;
-            char Buffer[BufferSize];
+            char *Pointer = (char*)Memory;
             
-            while(InternetReadFile(ConnectHandle, Buffer, BufferSize, &BytesRead)
+            while(InternetReadFile(ConnectHandle, Pointer, MemorySize, &BytesRead)
                   && BytesRead > 0)
             {
-                char* Temp = (char*)realloc(HTTPInfo->ResponseData, HTTPInfo->ResponseDataSize + BytesRead + 1);
-                    
-                if(Temp == 0)
-                {
-                    free(HTTPInfo->ResponseData);
-                    HTTPInfo->ResponseData = 0;
-                    break;
-                }
-                    
-                HTTPInfo->ResponseData = Temp;
-                memcpy(HTTPInfo->ResponseData + HTTPInfo->ResponseDataSize, Buffer, BytesRead);
-                HTTPInfo->ResponseDataSize += BytesRead;
+                Pointer += BytesRead;
             }
-            
-            if (HTTPInfo->ResponseData != NULL) HTTPInfo->ResponseData[HTTPInfo->ResponseDataSize] = '\0';
+            ++Pointer  = '\0';
+            HTTPInfo->ResponseData = (char*)Memory;
         }
     }
     InternetCloseHandle(InternetHandle);
-
+    
+    return Result;
 }
 
 inline b32 UserConfirmation(movie *Movie)
@@ -328,7 +312,8 @@ inline b32 is_program_file(char *String)
     b32 Result = false;
     char *Extensions[] = {".dll", ".map", "exp",
                           ".lib", ".exe", ".obj",
-                          ".pdb", "..", ".vs", ".sln", ".tmp", ".srt"};
+                          ".pdb", "..", ".vs", ".sln",
+                          ".tmp", ".srt"};
     int AtChar = 0;
     
     for(int Index = 0; Index < ArrayCount(Extensions); ++Index)    
@@ -433,9 +418,10 @@ WinMain(HINSTANCE Instance,
    
     app_memory AppMemory = {};
     AppMemory.PermanentMemory = Win32State.AppMemory;
+    AppMemory.PermanentStorageSize = Win32State.MemorySize;
     AppMemory.PlatformMakeHTTPRequest = PlatformMakeHTTPRequest;
-    AppMemory.PlatformWriteEntireFile = PlatformWriteEntireFile;
     AppMemory.PlatformFreeMemory = PlatformFreeMemory;
+    AppMemory.PlatformWriteEntireFile = PlatformWriteEntireFile;
     AppMemory.PlatformReadEntireFile = PlatformReadEntireFile;
     AppMemory.PlatformCreateFolder = PlatformCreateFolder;
     AppMemory.PlatformMoveFile = PlatformMoveFile;
@@ -524,14 +510,19 @@ WinMain(HINSTANCE Instance,
     {       
         if(AppState.GlobalRunning && App.AskPickMovies(&Thread, &AppState, &AppMemory))
         {
-            App.DEBUGCheckUserPicksFile(&Thread, &AppMemory, &AppState);
-            if(App.CleanFileMovie)
+            if(App.DEBUGCheckUserPicksFile(&Thread, &AppMemory, &AppState))
             {
-                App.CleanFileMovie(&Thread, &AppMemory, &AppState);
+                if(App.CleanFileMovie)
+                {
+                    App.CleanFileMovie(&Thread, &AppMemory, &AppState);
+                }
+            }
+            else
+            {
+                AppState.GlobalRunning = false;
             }
         }
     }
-    
 
     str_concat((AppState.OnePastLastEXEFileNameSlash - AppState.EXEPath), AppState.EXEPath,
                str_len("user_picks.tmp"), "user_picks.tmp",
