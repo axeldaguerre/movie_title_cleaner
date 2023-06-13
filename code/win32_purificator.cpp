@@ -11,12 +11,8 @@
 PLATFORM_MESSAGE_VALIDATION(PlatformMessageValidation)
 {
     b32 Result = true;
-    
-    char TextMessageBox[300];
-    wsprintf(TextMessageBox, "File Name: %s\n Movie title suggestion: %s (%s)",
-             Movie->IdFile, Movie->Title, Movie->Year);
-    
-    int Answer  = MessageBox( NULL, TextMessageBox, "Is the Movie Title right?",
+        
+    int Answer  = MessageBox( NULL, Text, Title,
                               MB_YESNOCANCEL|MB_TOPMOST);
     
     if(Answer == IDOK)
@@ -147,6 +143,7 @@ PLATFORM_WRITE_ENTIRE_FILE(PlatformWriteEntireFile)
     else
     {            
     }
+    // STUDY(Axel): Does keeping the FILEHANDLE gives better perf?
     CloseHandle(FileHandle);
     
     return(Result);
@@ -162,6 +159,7 @@ inline win32_app_code Win32LoadAppCode(char *SourceDLLName)
         Result.GetMovieData = (get_movie_data *)GetProcAddress(Result.DLLAppCode, "GetMovieData");
         Result.CleanFileMovie = (clean_file_movie *)GetProcAddress(Result.DLLAppCode, "CleanFileMovie");
         Result.AskPickMovies = (ask_pick_movies *)GetProcAddress(Result.DLLAppCode, "AskPickMovies");
+        Result.ShowFilesFailed = (show_files_failed *)GetProcAddress(Result.DLLAppCode, "ShowFilesFailed");
         Result.DEBUGCheckUserPicksFile = (debug_check_user_picks_file *)GetProcAddress(Result.DLLAppCode, "DEBUGCheckUserPicksFile");
     }
     
@@ -176,13 +174,24 @@ inline win32_app_code Win32LoadAppCode(char *SourceDLLName)
 
 PLATFORM_MAKE_HTTP_REQUEST(PlatformMakeHTTPRequest)
 {
-
     b32 Result = true;
-    HINTERNET InternetHandle = InternetOpen("IMDB's Connexion", INTERNET_OPEN_TYPE_DIRECT, NULL, NULL, 0);
+    HINTERNET InternetHandle = InternetOpen("IMDB's Connexion", INTERNET_OPEN_TYPE_DIRECT,
+                                            NULL, NULL, 0);
+
+    // remove the unique identifier and extension3
+    char FileNameNoExtension[MAX_PATH];
+    str_cut_after_from_end(UniqueFileName, FileNameNoExtension, "_");
+    Assert(str_len(FileNameNoExtension) > 0);
+
+    str_concat(str_len("https://www.rottentomatoes.com/search?search="), "https://www.rottentomatoes.com/search?search=",
+               str_len(FileNameNoExtension), FileNameNoExtension,
+               str_len(HTTPInfo->Query), HTTPInfo->Query);
 
     if (InternetHandle == NULL)
     {
+        // TODO(Axel): Log 
     }
+    
     else
     {
         HINTERNET ConnectHandle = InternetOpenUrlA(InternetHandle, HTTPInfo->Query,
@@ -195,7 +204,9 @@ PLATFORM_MAKE_HTTP_REQUEST(PlatformMakeHTTPRequest)
             str_copy(str_len("Couldn't make the internet call, check your internet connexion"),
                              "Couldn't make the internet call, check your internet connexion",
                              str_len(ErrorText), ErrorText);
+            
             int Answer  = MessageBox( NULL, ErrorText, "Internet Error", MB_OK);
+            
             if(Answer == IDOK)
             {
                 AppState->GlobalRunning = false;
@@ -214,6 +225,7 @@ PLATFORM_MAKE_HTTP_REQUEST(PlatformMakeHTTPRequest)
             {
                 Pointer += BytesRead;
             }
+            
             ++Pointer  = '\0';
             HTTPInfo->ResponseData = (char*)Memory;
         }
@@ -435,18 +447,22 @@ WinMain(HINSTANCE Instance,
                str_len(FileSearchQuery), FileSearchQuery);
             
     Win32State.FileHandle = FindFirstFileA(FileSearchQuery, &FileData);
-    
-
-    char DevFileToDelete[MAX_PATH];
-    str_concat((AppState.OnePastLastEXEFileNameSlash - AppState.EXEPath), AppState.EXEPath,
+            
+    str_concat(AppState.OnePastLastEXEFileNameSlash - AppState.EXEPath, AppState.EXEPath,
                str_len("user_picks.tmp"), "user_picks.tmp",
-               str_len(DevFileToDelete), DevFileToDelete);
-    DeleteFile(DevFileToDelete);
-    
+               str_len(AppState.MoviesSelectedPath), AppState.MoviesSelectedPath);
+
     str_concat((AppState.OnePastLastEXEFileNameSlash - AppState.EXEPath), AppState.EXEPath,
-               str_len("metadata.tmp"), "metadata.tmp",
-               str_len(DevFileToDelete), DevFileToDelete);
-    DeleteFile(DevFileToDelete);
+               str_len("metadata_movies.tmp"), "metadata_movies.tmp",
+               str_len(AppState.MetadataPath), AppState.MetadataPath);
+
+    str_concat(AppState.OnePastLastEXEFileNameSlash - AppState.EXEPath, AppState.EXEPath,
+               str_len("files_failed.txt"), "files_failed.txt",
+               str_len(AppState.FilesFailedPath), AppState.FilesFailedPath);
+
+    DeleteFile(AppState.FilesFailedPath);
+    DeleteFile(AppState.MoviesSelectedPath);
+    DeleteFile(AppState.MetadataPath);
 
     while(AppState.GlobalRunning)
     {        
@@ -466,32 +482,21 @@ WinMain(HINSTANCE Instance,
             
             if(is_folder(File.Path)) continue;
 
+            ++AppState.FileCount;
+            
             http_info HTTPInfo = {};
             
-            char FileNameNoExtension[MAX_PATH];
-            str_cut_after_from_end(FileData.cFileName, FileNameNoExtension, ".");
-            Assert(str_len(FileNameNoExtension) > 0);
 
-            wsprintf(HTTPInfo.Query, "https://www.rottentomatoes.com/search?search=%s", FileNameNoExtension);
 
-            movie Movie = {};
-            wsprintf(Movie.IdFile, "%s_%d", File.FileName, AppState.FileCount); 
+            char UniqueFileName[150];
+            // Used in order to differenciate same files having same file name
+            wsprintf(UniqueFileName, "%s_%d", File.FileName, AppState.FileCount); 
             
             if(AppMemory.PermanentMemory)
             {
                 if(App.GetMovieData)
                 {
-
-                    char IdFileMovie[MAX_PATH];
-                    // TODO(Axel): Construct the full path 
-                    wsprintf(IdFileMovie, "%s_%d", File.FileName, AppState.FileCount);
-
-
-                    str_concat(AppState.OnePastLastEXEFileNameSlash - AppState.EXEPath, AppState.EXEPath,
-                               str_len("metadata.tmp"), "metadata.tmp",
-                               str_len(AppState.MetadataPath), AppState.MetadataPath);
-
-                    App.GetMovieData(&Thread, &File, &Movie, &HTTPInfo, &AppMemory, &AppState);
+                    App.GetMovieData(&Thread, UniqueFileName, &AppMemory, &AppState);
 
                 }
             }
@@ -501,39 +506,36 @@ WinMain(HINSTANCE Instance,
             break;
         }
     }
-    
-    str_concat(AppState.OnePastLastEXEFileNameSlash - AppState.EXEPath, AppState.EXEPath,
-               str_len("user_picks.tmp"), "user_picks.tmp",
-               str_len(AppState.MoviesSelectedPath), AppState.MoviesSelectedPath);
 
-    if(App.AskPickMovies)
-    {       
-        if(AppState.GlobalRunning && App.AskPickMovies(&Thread, &AppState, &AppMemory))
+    if(AppState.GlobalRunning)
+    {           
+        if(App.AskPickMovies &&
+           App.AskPickMovies(&Thread, &AppState, &AppMemory))
         {
-            if(App.DEBUGCheckUserPicksFile(&Thread, &AppMemory, &AppState))
+            if(App.DEBUGCheckUserPicksFile &&
+               App.DEBUGCheckUserPicksFile(&Thread, &AppMemory, &AppState))
             {
-                if(App.CleanFileMovie)
+                if(App.ShowFilesFailed &&
+                   App.ShowFilesFailed(&Thread, &AppMemory, &AppState) != 3)
                 {
-                    App.CleanFileMovie(&Thread, &AppMemory, &AppState);
+                    // User is aware and has accepted the files that failed
+                    if(App.CleanFileMovie)
+                    {
+                        App.CleanFileMovie(&Thread, &AppMemory, &AppState);
+                    }
+                        
                 }
             }
-            else
-            {
-                AppState.GlobalRunning = false;
-            }
+        }
+        else
+        {
+            AppState.GlobalRunning = false;
         }
     }
-
-    str_concat((AppState.OnePastLastEXEFileNameSlash - AppState.EXEPath), AppState.EXEPath,
-               str_len("user_picks.tmp"), "user_picks.tmp",
-               str_len(DevFileToDelete), DevFileToDelete);
-    DeleteFile(DevFileToDelete);
-    
-    str_concat((AppState.OnePastLastEXEFileNameSlash - AppState.EXEPath), AppState.EXEPath,
-               str_len("metadata.tmp"), "metadata.tmp",
-               str_len(DevFileToDelete), DevFileToDelete);
-    DeleteFile(DevFileToDelete);
-
+   
+    DeleteFile(AppState.FilesFailedPath);
+    DeleteFile(AppState.MoviesSelectedPath);
+    DeleteFile(AppState.MetadataPath);
     
     return 0;
 }

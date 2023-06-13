@@ -53,17 +53,15 @@ typedef struct debug_read_file_result
 
 typedef struct http_info
 {
-    char Query[60];
+    char Query[150];
     char *ResponseData;
     int ResponseDataSize;
-
-    u8 MovieCount;
 } http_info;
 
 struct movie
 {
-    char IdFile[100];
-    char Title[100];
+    char IdFile[150];
+    char Title[150];
     char Year[5];
 };
 
@@ -75,12 +73,13 @@ struct app_state
     
     char MoviesSelectedPath[MAX_PATH_SIZE];   
     char MetadataPath[MAX_PATH_SIZE];
+    char FilesFailedPath[MAX_PATH_SIZE];
     
     char EXEPath[MAX_PATH_SIZE];
     char *OnePastLastEXEFileNameSlash;
 };
 
-#define PLATFORM_MAKE_HTTP_REQUEST(name) b32 name(thread_context *Thread, http_info *HTTPInfo, app_file *File, movie *Movie, app_state *AppState, void *Memory, int MemorySize)
+#define PLATFORM_MAKE_HTTP_REQUEST(name) b32 name(thread_context *Thread, http_info *HTTPInfo, char *UniqueFileName, app_state *AppState, void *Memory, int MemorySize)
 typedef PLATFORM_MAKE_HTTP_REQUEST(platform_make_http_request);
 
 #define PLATFORM_WRITE_ENTIRE_FILE(name) b32 name(thread_context *Thread, char *FileName, u32 MemorySize, void *Memory)
@@ -98,7 +97,7 @@ typedef PLATFORM_CREATE_FOLDER(platform_create_folder);
 #define PLATFORM_MOVE_FILE(name) b32 name(thread_context *Thread, char *FilePath, char *NewFilePath)
 typedef PLATFORM_MOVE_FILE(platform_move_file);
 // TODO(Axel): Should be a text in the parameter and not a movie
-#define PLATFORM_MESSAGE_VALIDATION(name) b32 name(thread_context *Thread, movie *Movie)
+#define PLATFORM_MESSAGE_VALIDATION(name) b32 name(thread_context *Thread, char *Title, char *Text)
 typedef PLATFORM_MESSAGE_VALIDATION(platform_message_validation);
 
 typedef struct app_memory
@@ -119,7 +118,7 @@ typedef struct app_memory
     void *PermanentMemory;
 } app_memory;
 
-#define GET_MOVIE_DATA(name) b32 name(thread_context *Thread, app_file *File, movie *Movie, http_info *HTTPInfo, app_memory *AppMemory, app_state *AppState)
+#define GET_MOVIE_DATA(name) b32 name(thread_context *Thread, char *UniqueFileName, app_memory *AppMemory, app_state *AppState)
 typedef GET_MOVIE_DATA(get_movie_data);
 
 #define CLEAN_FILE_MOVIE(name) app_file name(thread_context *Thread, app_memory *AppMemory, app_state *AppState)
@@ -127,6 +126,9 @@ typedef CLEAN_FILE_MOVIE(clean_file_movie);
 
 #define ASK_PICK_MOVIES(name) b32 name(thread_context *Thread, app_state *AppState, app_memory *AppMemory)
 typedef ASK_PICK_MOVIES(ask_pick_movies);
+
+#define SHOW_FILES_FAILED(name) b32 name(thread_context *Thread, app_memory *AppMemory, app_state *AppState)
+typedef SHOW_FILES_FAILED(show_files_failed);
 
 #define DEBUG_CHECK_USER_PICKS_FILE(name) b32 name(thread_context *Thread, app_memory *AppMemory, app_state *AppState)
 typedef DEBUG_CHECK_USER_PICKS_FILE(debug_check_user_picks_file);

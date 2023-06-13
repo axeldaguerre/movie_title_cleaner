@@ -7,12 +7,56 @@
 //TODO(Axel): Be more consistent on function paramaters (Ex: StringCount before Strin)
 inline int str_len(char *String)
 {
-     int Count = 0;
+    int Count = 0;
     while(*String++)
     {
         ++Count;
     }
     return(Count);
+}
+
+inline bool str_char_is_number(char Char)
+{
+    bool Result = 0;
+    Result = (Char >= '0' && Char <= '9');
+    return Result;
+}
+
+inline b32 str_first_number_char_from_end(char *String, char SkipFrom)
+{
+    b32 Result = 0;
+    int Index = 0;    
+    int StringLen = str_len(String);
+    bool Flag = true;
+    
+    char *Scan = (String + StringLen);
+    while(*Scan != SkipFrom)
+    {
+        ++Index;
+        --Scan;
+        continue;
+    }
+
+    for(;Index < StringLen ; --Scan)
+    {
+        bool IsNumber = str_char_is_number(*Scan);
+        if(Flag && IsNumber)
+        {
+            Result = (StringLen - Index - 1);
+        }
+        else if(Flag && Result > 0 && !IsNumber)
+        {
+            Flag = false;
+        }
+        
+        if(!Flag && !IsNumber)
+        {
+            break;
+        }
+        ++Index;
+    }
+    
+    return Result;
 }
 
 inline void str_concat(size_t SourceACount, char *SourceA,
@@ -34,7 +78,7 @@ inline void str_concat(size_t SourceACount, char *SourceA,
         *Dest++ = *SourceB++;
     }
 
-    *Dest++ = 0;
+    *Dest = 0;
 }
 
 inline char char_at(char *String, int Index)
@@ -372,7 +416,7 @@ inline int str_copy(char *String, char *Dest, int Start, int End)
 // NOTE(Axel): Start and End char will be in the return
 inline void str_cut(char *String, char* Dest, int Start, int End)
 {
-    Assert(Start < End);
+    Assert(Start <= End);
     String += Start;
     for(int IndexChar = Start; IndexChar <= End; ++IndexChar)
     {

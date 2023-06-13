@@ -4,6 +4,7 @@ struct win32_app_code
     
     get_movie_data *GetMovieData;
     clean_file_movie *CleanFileMovie;
+    show_files_failed *ShowFilesFailed;
     debug_check_user_picks_file *DEBUGCheckUserPicksFile;
     ask_pick_movies *AskPickMovies;
     

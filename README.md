@@ -8,6 +8,14 @@ User can create a directory with the same name that of the file name or just cha
 Its a usefull tool for media movie managers like `Kodi` and was created for that particulary reason.
 Indeed it can takes you several hours to check every movies you have and check if their title and years are the good ones.
 Movie year is important because it's the only way to diffence two movies with the same names, even if in rare movies it's not true.
+Best result possible with file names having properties has:
+1. If the title movie has number in it, it has to have the year of the movie. Otherwise the logic will see the number as the year and will cut the title movie from it for the search. (It will not break your files thought)
+2. Having the year inside parameter is best
+3. Has the query use the file name, not having garbage ones is mandatory
+
+The program has few mechanisms in order to avoid the deletion or unwanted modification of the filenames:
+1. It never use the `DeleteFile()` win32 function call.
+2. The user can cancel it at any time, the time when the modification is happening is at the end of all movie suggestions validated by the user.
 
 # How to use
 
@@ -20,6 +28,9 @@ Movie year is important because it's the only way to diffence two movies with th
     - `Cancel`: It cancel the program **and make no modifications**
 5. Done, you will have all movie files inside a folder with the name of the suggestions accepted previously.
 
+# Current Limitations
+
+1. There is no possibility to go to a previous suggestion not validated, the user will have to skip all other by clicking `No` until next movie file and relaunch the application later.
 
 ## To dos
 

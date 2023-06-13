@@ -46,6 +46,31 @@ inline void build_file_path(app_state *AppState, char *FileName, char* Dest)
                str_len(Dest), Dest);
 }
 
+extern "C" SHOW_FILES_FAILED(ShowFilesFailed)
+{
+    b32 Result = false;
+    
+    if(AppMemory->PlatformReadEntireFile)
+    {
+        debug_read_file_result FileRead = AppMemory->PlatformReadEntireFile(Thread,
+                                                                            AppState->FilesFailedPath);
+        if(FileRead.ContentsSize != 0)
+        {
+            app_file *File = (app_file*)FileRead.Contents;
+
+            char Text[MAX_PATH_APP];
+            char Title[100];
+            
+            if(AppMemory->PlatformMessageValidation)
+            {
+                Result = AppMemory->PlatformMessageValidation(Thread, Title, Text);
+            }
+        }
+    }
+    
+    return Result;
+}
+
 extern "C" DEBUG_CHECK_USER_PICKS_FILE(DEBUGCheckUserPicksFile)
 {
     b32 Result = true;
@@ -70,12 +95,16 @@ extern "C" DEBUG_CHECK_USER_PICKS_FILE(DEBUGCheckUserPicksFile)
                 if(str_are_equal(str_len(Movie->IdFile), Movie->IdFile,
                                  str_len(PreviousFileId), PreviousFileId))
                 {
-                    //TODO(Axel): Change the message box type 
+                    //TODO(Axel): Custom Message Dialog
+                    char Text[150];
+                    char Title[150];
                     str_copy(str_len("The file of the movies selected are corrupted, cancel it"), "The file of the movies selected are corrupted, cancel it",
-                             str_len(Movie->Title), Movie->Title);
+                             str_len(Text), Text);
+                    str_copy(str_len("File Corrupted"), "File Corrupted",
+                             str_len(Title), Title);
                     Result = false;
                     AppState->GlobalRunning = false;
-                    AppMemory->PlatformMessageValidation(Thread, Movie);
+                    AppMemory->PlatformMessageValidation(Thread, Text, Title);
                     break;
                 }
 
@@ -85,29 +114,56 @@ extern "C" DEBUG_CHECK_USER_PICKS_FILE(DEBUGCheckUserPicksFile)
     return Result;    
 }
 
-// TODO(Axel): Do a check of the movies selected file (movies id should be unique)
 extern "C" ASK_PICK_MOVIES(AskPickMovies)
 {
     b32 Result = true;
 
     if(AppMemory->PlatformReadEntireFile)
     {
-        debug_read_file_result FileRead = AppMemory->PlatformReadEntireFile(Thread, AppState->MetadataPath);
+        debug_read_file_result FileRead =
+            AppMemory->PlatformReadEntireFile(Thread, AppState->MetadataPath);
     
         if(FileRead.ContentsSize != 0)
         {
-       
+            
             u32 ContentsSizeLeft = FileRead.ContentsSize;
             b32 UserAnswer = false;
             movie *Movie;
-            Movie = (movie*)FileRead.Contents;
+            Movie = (movie*)FileRead.Contents;            
             if(AppMemory->PlatformMessageValidation)
             {
                 while(ContentsSizeLeft)
                 {
                     if(Movie)
                     {
-                        UserAnswer = AppMemory->PlatformMessageValidation(Thread, Movie);
+                        char Title[150];
+                        char Year[6];
+                        char IdFile[150];
+                        char Text[300];
+                        char Temp[150];
+                        // TITLE
+                        str_concat(str_len("File Name: "), "File Name: ",
+                                   str_len(Movie->IdFile), Movie->IdFile,
+                                   str_len(Title), Title);
+
+                        // YEAR
+                        str_concat(str_len("("), "(",
+                                   str_len(Movie->Year), Movie->Year,
+                                   str_len(Temp), Temp);
+
+                        str_concat(str_len(Temp), Temp,
+                                   str_len(")"), ")",
+                                   str_len(Year), Year);
+            
+                        str_concat(str_len("Suggestion: "), "Suggestion: ",
+                                   str_len(Movie->Title), Movie->Title,
+                                   str_len(Temp), Temp);
+                        
+                        str_concat(str_len(Temp), Temp,
+                                   str_len(Year), Year,
+                                   str_len(Text), Text);
+                        
+                        UserAnswer = AppMemory->PlatformMessageValidation(Thread, Title, Text);
                         
                         if(UserAnswer == 1 && AppMemory->PlatformWriteEntireFile)
                         {                            
@@ -115,12 +171,12 @@ extern "C" ASK_PICK_MOVIES(AskPickMovies)
                                                                   AppState->MoviesSelectedPath,
                                                                   sizeof(movie), Movie))
                             {
-                                char IdFile[100];
                                 str_copy(str_len(Movie->IdFile), Movie->IdFile,
                                          str_len(IdFile), IdFile);
 
-                                while(ContentsSizeLeft > 0 && str_are_equal(str_len(Movie->IdFile), Movie->IdFile,
-                                                                            str_len(IdFile), IdFile))
+                                while(ContentsSizeLeft > 0 &&
+                                      str_are_equal(str_len(Movie->IdFile), Movie->IdFile,
+                                                    str_len(IdFile), IdFile))
                                 {
                                     ++Movie;
                                     ContentsSizeLeft -= sizeof(movie);
@@ -262,20 +318,41 @@ extern "C" GET_MOVIE_DATA(GetMovieData)
     b32 Scrapping         = true;
     int MatchAt           = 0;
     int SearchLength      = 0;
+    char Query[150];
+    // Removing file's extension and the unique identifier (AppState.FileCount)
+    // NOTE(Axel): Removing Year is better for Rotten tomatoes query searching
+    // TODO(Axel): Maybe handle the '(' before the year
+    // TODO(Axel): Make logic if the file name has no year in the title but number part of the title    
+    b32 StartYearIndex = str_first_number_char_from_end(UniqueFileName, '.');
+    if(StartYearIndex)
+    {    
+        // Movie has number in title
+        str_cut(UniqueFileName, Query, 0, StartYearIndex);
+    }
+    else
+    {
+        str_cut_after_from_end(UniqueFileName, Query, ".");
+    }
+    
+    if(str_len(Query) == 0) return Result;
 
-    if(!AppMemory->PlatformMakeHTTPRequest(Thread, HTTPInfo, File, Movie, AppState,
+    // TODO(Axel) Rotten seems to work better without the year of the movie in the search
+    http_info HTTPInfo = {};
+    str_concat(str_len("https://www.rottentomatoes.com/search?search="), "https://www.rottentomatoes.com/search?search=",
+             str_len(Query), Query,
+             str_len(HTTPInfo.Query), HTTPInfo.Query);
+    
+    if(!AppMemory->PlatformMakeHTTPRequest(Thread, &HTTPInfo, UniqueFileName, AppState,
                                        AppMemory->PermanentMemory,
                                           (int)AppMemory->PermanentStorageSize))
     {
         return Result;
     }
     
-    ++AppState->FileCount;
-    
-    if(HTTPInfo->ResponseData)
+    if(HTTPInfo.ResponseData)
     {
         // NOTE(Axel): HTML bloated with script, search is not performant. we skip content (dumb optimization)
-        char *HTTPPointer = HTTPInfo->ResponseData + HTML_CHAR_SKIP_OPTIMIZATION;
+        char *HTTPPointer = HTTPInfo.ResponseData + HTML_CHAR_SKIP_OPTIMIZATION;
                 
         if(HTTPPointer)
         {
@@ -283,16 +360,31 @@ extern "C" GET_MOVIE_DATA(GetMovieData)
             HTTPPointer += (MatchAt + 1);
 
             b32 HasMovieLeft = true;
-            while(HasMovieLeft)
+            for(;;)
             {
+                movie Movie = {};
+                str_copy(str_len(UniqueFileName), UniqueFileName,
+                         str_len(Movie.IdFile), Movie.IdFile);
                 // NOTE(Axel): Year
                 IsAMatch = str_search_from_start("releaseyear=\"", str_len("releaseyear=\""),
                                                  HTTPPointer, &MatchAt);
+                // Assert(IsAMatch);
+                if(!IsAMatch)
+                {
+                    if(AppMemory->PlatformWriteEntireFile)
+                    {
+                        AppMemory->PlatformWriteEntireFile(Thread, AppState->FilesFailedPath,
+                                                           sizeof(movie), &Movie);
+                    }
+                     
+                    break;
+                }
+
                 HTTPPointer += (MatchAt + 1);
                 
                 char Temp[150];
                 IsAMatch = str_copy_until(HTTPPointer, Temp, "\"");
-                str_trim_end(str_len(Temp), Temp, str_len(Movie->Year), Movie->Year);
+                str_trim_end(str_len(Temp), Temp, str_len(Movie.Year), Movie.Year);
                 // NOTE(Axel): Title
                 str_search_from_start("slot=\"title\">",
                                       str_len("slot=\"title\">"),
@@ -309,15 +401,12 @@ extern "C" GET_MOVIE_DATA(GetMovieData)
                 if(str_contains(Temp2, ";"))
                 {
                     str_convert_to_ascii(str_len(Temp2), Temp2, str_len(Temp3), Temp3);
-                    remove_char_in_text(Temp3, Movie->Title, "\n");
+                    remove_char_in_text(Temp3, Movie.Title, "\n");
                 }
                 else
                 {
-                    remove_char_in_text(Temp2, Movie->Title, "\n");
+                    remove_char_in_text(Temp2, Movie.Title, "\n");
                 }
-
-                // TODO(Axel): Trim end of the string
-
                 
                 int IndexUl = 0;
                 int IndexSearch = 0;
@@ -326,16 +415,15 @@ extern "C" GET_MOVIE_DATA(GetMovieData)
                 
                 if(IndexUl < IndexSearch)
                 {
-                    HasMovieLeft = false;
+                    // NOTE(Axel): We passed the result search section
+                    break;
                 }
                 Assert(IsAMatch);
-
-               ++HTTPInfo->MovieCount;
 
                if(AppMemory->PlatformWriteEntireFile)
                {                   
                    if(!AppMemory->PlatformWriteEntireFile(Thread, AppState->MetadataPath,
-                                                         sizeof(movie), Movie))
+                                                         sizeof(movie), &Movie))
                    {
                        // NOTE(Axel): Couldn't write the file.
                        break;
