@@ -39,14 +39,13 @@ The program has few mechanisms in order to avoid the deletion or unwanted modifi
 
 1. Be able to retrieve previous movie suggestion
 2. Handle the case where no suggestion have been validated
-2. Better checks
-2. fix some ascii bug
+3. Better checks
+4. fix some ascii bug
 ![image](https://github.com/axeldaguerre/movie_title_cleaner/assets/51819886/40eb9787-b353-4233-8a06-e86d34883b3e)
 
-4. Find a way to put the `dll` inside the `exe` file 
-5. Nicer User experience
-6. Better performance (Better string searching algo and structure)
-7. Add data to check if it works, as it could broke any files inside the folder if it fails. You don't want to loose all these precious data.
+5. Find a way to put the `dll` inside the `exe` file 
+6. Nicer User experience
+7. Better performance (Better string searching algo and structure)
 8. All data scrapped should be saved in a file (User wait only at the beginning) then you read the file in order to give him suggestions confirmation
 9. Does it needs to be able to search movie title from folder ?
 10. Handle Folder / Files mixing
@@ -64,6 +63,7 @@ The program has few mechanisms in order to avoid the deletion or unwanted modifi
 22. Personalized `DialogBox`
 23. A way to copy the movie's title
 24. A way to skip a movie
+25. Add data to check if it works, as it could broke any files inside the folder if it fails. You don't want to loose all these precious data.
 
 This is a personal tool that permit me to automatically manage my media library for Kodi.
 The future of this tool will be to have a friendly way to do simple operation that will use imdb **without api key needed** to get a proper movie name, use for the folder that will contain the movie data to properly have a name scrapable by imdb python api. 
