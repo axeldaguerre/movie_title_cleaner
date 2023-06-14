@@ -325,7 +325,7 @@ inline b32 is_program_file(char *String)
     char *Extensions[] = {".dll", ".map", "exp",
                           ".lib", ".exe", ".obj",
                           ".pdb", "..", ".vs", ".sln",
-                          ".tmp", ".srt", ".txt", ".dll"};
+                          ".tmp", ".srt", ".txt", ".dll", ".ini"};
     int AtChar = 0;
     
     for(int Index = 0; Index < ArrayCount(Extensions); ++Index)    
