@@ -182,7 +182,7 @@ PLATFORM_MAKE_HTTP_REQUEST(PlatformMakeHTTPRequest)
     char FileNameNoExtension[MAX_PATH];
     str_cut_after_from_end(UniqueFileName, FileNameNoExtension, "_");
     Assert(str_len(FileNameNoExtension) > 0);
-
+    //TODO(Axel) should be inside a struct in app side not platform side
     str_concat(str_len("https://www.rottentomatoes.com/search?search="), "https://www.rottentomatoes.com/search?search=",
                str_len(FileNameNoExtension), FileNameNoExtension,
                str_len(HTTPInfo->Query), HTTPInfo->Query);
@@ -340,6 +340,7 @@ inline b32 is_program_file(char *String)
     return Result;
 }
 
+// TODO(Axel): It's duplicated, remove the unused one.
 inline void win32_get_exe_file_name(app_state *State )
 {
     GetModuleFileName(0, State->EXEPath, sizeof(State->EXEPath));
@@ -383,7 +384,7 @@ inline void win32_get_file_exe(app_state *State)
         }
     }
 }
-
+// TODO(Axel): Should not be here > string_op.h
 inline void str_cut_after_from_end(char *String, char *Pat, int PatLen)
 {
     int AtIndex = 0;
