@@ -40,7 +40,8 @@ The program has few mechanisms in order to avoid the deletion or unwanted modifi
 1. Be able to retrieve previous movie suggestion
 2. Handle the case where no suggestion have been validated
 3. Better checks
-4. fix some ascii bug
+4. fix some ascii bug:
+
 ![image](https://github.com/axeldaguerre/movie_title_cleaner/assets/51819886/40eb9787-b353-4233-8a06-e86d34883b3e)
 
 5. Find a way to put the `dll` inside the `exe` file 
