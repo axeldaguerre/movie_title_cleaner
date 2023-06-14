@@ -19,7 +19,7 @@ The program has few mechanisms in order to avoid the deletion or unwanted modifi
 
 # How to use
 
-1. Place the `purificator.exe` file inside the folder where all the movies you want to format are.
+1. Place the `purificator.exe` and `purificator.dll` file inside the folder where all the movies you want to format are.
 2. Run `purificator.exe`.
 3. It will scrap all the movies in order to ask for suggestions. It can be quite long if you have hundreds of movies as it scrap the website and extract the informations
 4. A `MessageBox` window suggest your a movie title with the according movie file. From here you have three possibilities:
@@ -37,6 +37,7 @@ The program has few mechanisms in order to avoid the deletion or unwanted modifi
 1. Be able to retrieve previous movie suggestion
 2. Handle the case where no suggestion have been validated
 2. Better checks
+2. Find a way to put the `dll` inside the `exe` file 
 3. Nicer User experience
 4. Better performance (Better string searching algo and structure)
 5. Add data to check if it works, as it could broke any files inside the folder if it fails. You don't want to loose all these precious data.
