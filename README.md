@@ -40,28 +40,30 @@ The program has few mechanisms in order to avoid the deletion or unwanted modifi
 1. Be able to retrieve previous movie suggestion
 2. Handle the case where no suggestion have been validated
 2. Better checks
-2. fix some ascii bug (see picture)
-2. Find a way to put the `dll` inside the `exe` file 
-3. Nicer User experience
-4. Better performance (Better string searching algo and structure)
-5. Add data to check if it works, as it could broke any files inside the folder if it fails. You don't want to loose all these precious data.
-6. All data scrapped should be saved in a file (User wait only at the beginning) then you read the file in order to give him suggestions confirmation
-7. Does it needs to be able to search movie title from folder ?
-8. Handle Folder / Files mixing
-8. Add realisator on the `MessageBox` (in order to difference two movies with same name same year)
-9. Add language support, User should be able to have specific language for all movies scrapped.
-10. Movie Poster displayed on suggestion in order to quicker make the decision
-11. Integrate test, for example string_op.h changes should not break. As I've not made strong decision about its design.
-12. Make the code more robust if the files moved from when the movie suggestions where picked
-13. Handle the disconnexion of the hdd 
-14. Generate folders only for media type files
-15. Rename files
-16. Check if it handles other language than english (should be)
-17. Add a loading screen during scrapping of all movies
-18. Make possible a complete revert of the state if error occur
-19. Personalized `DialogBox`
-20. A way to copy the movie's title
-21. A way to skip a movie
+2. fix some ascii bug
+![image](https://github.com/axeldaguerre/movie_title_cleaner/assets/51819886/40eb9787-b353-4233-8a06-e86d34883b3e)
+
+4. Find a way to put the `dll` inside the `exe` file 
+5. Nicer User experience
+6. Better performance (Better string searching algo and structure)
+7. Add data to check if it works, as it could broke any files inside the folder if it fails. You don't want to loose all these precious data.
+8. All data scrapped should be saved in a file (User wait only at the beginning) then you read the file in order to give him suggestions confirmation
+9. Does it needs to be able to search movie title from folder ?
+10. Handle Folder / Files mixing
+11. Add realisator on the `MessageBox` (in order to difference two movies with same name same year)
+12. Add language support, User should be able to have specific language for all movies scrapped.
+13. Movie Poster displayed on suggestion in order to quicker make the decision
+14. Integrate test, for example string_op.h changes should not break. As I've not made strong decision about its design.
+15. Make the code more robust if the files moved from when the movie suggestions where picked
+16. Handle the disconnexion of the hdd 
+17. Generate folders only for media type files
+18. Rename files
+19. Check if it handles other language than english (should be)
+20. Add a loading screen during scrapping of all movies
+21. Make possible a complete revert of the state if error occur
+22. Personalized `DialogBox`
+23. A way to copy the movie's title
+24. A way to skip a movie
 
 This is a personal tool that permit me to automatically manage my media library for Kodi.
 The future of this tool will be to have a friendly way to do simple operation that will use imdb **without api key needed** to get a proper movie name, use for the folder that will contain the movie data to properly have a name scrapable by imdb python api. 
