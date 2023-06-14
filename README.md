@@ -37,7 +37,8 @@ The program has few mechanisms in order to avoid the deletion or unwanted modifi
 1. There is no possibility to go to a previous suggestion not validated, the user will have to skip all other by clicking `No` until next movie file and relaunch the application later.
 
 ## To dos
-
+1. Rotten seems odd on movie suggestion, try to fix it or change api
+2. Rotten doesn't like `.` and number like `Rio 1` `Rio 2` in the titles do we need to remove them ?
 1. Be able to retrieve previous movie suggestion
 2. Handle the case where no suggestion have been validated
 3. Better checks
