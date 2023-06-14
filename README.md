@@ -1,5 +1,8 @@
 # KODI files formater
 
+![image](https://github.com/axeldaguerre/movie_title_cleaner/assets/51819886/fd6f48e9-3fe7-4624-9503-e4ce1378f5b3)
+
+
 This tool bypass the need to have a aws account in order to use the IMDB API, it does an HTML call and parse the HTML File to get informations about the movie.
 As the search can retrieve several different movies and the file name could not be a right Movie title, it asks the user to accept or decline the new file name.
 This tool ensure that the movie file name will get a real movie title.
