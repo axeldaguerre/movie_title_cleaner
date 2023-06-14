@@ -37,6 +37,7 @@ The program has few mechanisms in order to avoid the deletion or unwanted modifi
 1. Be able to retrieve previous movie suggestion
 2. Handle the case where no suggestion have been validated
 2. Better checks
+2. fix some ascii bug (see picture)
 2. Find a way to put the `dll` inside the `exe` file 
 3. Nicer User experience
 4. Better performance (Better string searching algo and structure)
